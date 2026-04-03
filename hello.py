@@ -49,7 +49,7 @@ def shout(name: str) -> str:
         ValueError: If name is empty or whitespace-only.
         TypeError: If name is not a string.
     """
-    return f"HELLO, {_normalize(name).upper()}!"
+    return greet(name).upper()
 
 
 def main() -> None:
