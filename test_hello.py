@@ -43,6 +43,9 @@ class TestNormalize(unittest.TestCase):
 class TestGreet(unittest.TestCase):
     """Tests for the greet() function."""
 
+    def test_default_name(self):
+        self.assertEqual(greet(), "Hello, World!")
+
     def test_basic_greeting(self):
         self.assertEqual(greet("Master"), "Hello, Master!")
 

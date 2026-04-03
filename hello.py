@@ -20,7 +20,7 @@ def _normalize(name: str) -> str:
     return name
 
 
-def greet(name: str) -> str:
+def greet(name: str = "World") -> str:
     """Return a greeting for the given name.
 
     Args:
