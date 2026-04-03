@@ -76,6 +76,9 @@ class TestGreet(unittest.TestCase):
 class TestShout(unittest.TestCase):
     """Tests for the shout() function."""
 
+    def test_default_name(self):
+        self.assertEqual(shout(), "HELLO, WORLD!")
+
     def test_basic_shout(self):
         self.assertEqual(shout("Master"), "HELLO, MASTER!")
 
@@ -101,6 +104,9 @@ class TestShout(unittest.TestCase):
 
 class TestWhisper(unittest.TestCase):
     """Tests for the whisper() function."""
+
+    def test_default_name(self):
+        self.assertEqual(whisper(), "hello, world!")
 
     def test_basic_whisper(self):
         self.assertEqual(whisper("Master"), "hello, master!")
