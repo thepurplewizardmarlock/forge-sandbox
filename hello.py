@@ -52,6 +52,22 @@ def shout(name: str) -> str:
     return greet(name).upper()
 
 
+def whisper(name: str) -> str:
+    """Return a lowercased greeting for the given name.
+
+    Args:
+        name: The name to greet. Must be a non-empty string.
+
+    Returns:
+        A lowercased greeting string.
+
+    Raises:
+        ValueError: If name is empty or whitespace-only.
+        TypeError: If name is not a string.
+    """
+    return greet(name).lower()
+
+
 def main() -> None:
     """Interactive entry point. Handles user input errors gracefully."""
     user_input = input("What's your name? ")

@@ -8,7 +8,7 @@ Run with:
 
 import unittest
 from unittest.mock import patch
-from hello import greet, shout, _normalize, main
+from hello import greet, shout, whisper, _normalize, main
 
 
 class TestNormalize(unittest.TestCase):
@@ -94,6 +94,32 @@ class TestShout(unittest.TestCase):
     def test_none_raises(self):
         with self.assertRaises(TypeError):
             shout(None)
+
+
+class TestWhisper(unittest.TestCase):
+    """Tests for the whisper() function."""
+
+    def test_basic_whisper(self):
+        self.assertEqual(whisper("Master"), "hello, master!")
+
+    def test_strips_whitespace(self):
+        self.assertEqual(whisper("  Master  "), "hello, master!")
+
+    def test_empty_string_raises(self):
+        with self.assertRaises(ValueError):
+            whisper("")
+
+    def test_whitespace_only_raises(self):
+        with self.assertRaises(ValueError):
+            whisper("   ")
+
+    def test_non_string_raises(self):
+        with self.assertRaises(TypeError):
+            whisper(42)
+
+    def test_none_raises(self):
+        with self.assertRaises(TypeError):
+            whisper(None)
 
 
 class TestMain(unittest.TestCase):
