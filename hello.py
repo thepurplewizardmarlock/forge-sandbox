@@ -36,7 +36,7 @@ def greet(name: str = "World") -> str:
     return f"Hello, {_normalize(name)}!"
 
 
-def shout(name: str) -> str:
+def shout(name: str = "World") -> str:
     """Return an uppercased greeting for the given name.
 
     Args:
@@ -52,7 +52,7 @@ def shout(name: str) -> str:
     return greet(name).upper()
 
 
-def whisper(name: str) -> str:
+def whisper(name: str = "World") -> str:
     """Return a lowercased greeting for the given name.
 
     Args:
