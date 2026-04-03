@@ -7,7 +7,8 @@ Run with:
 """
 
 import unittest
-from hello import greet, shout, _normalize
+from unittest.mock import patch
+from hello import greet, shout, _normalize, main
 
 
 class TestNormalize(unittest.TestCase):
@@ -93,6 +94,24 @@ class TestShout(unittest.TestCase):
     def test_none_raises(self):
         with self.assertRaises(TypeError):
             shout(None)
+
+
+class TestMain(unittest.TestCase):
+    """Tests for the interactive main() function."""
+
+    def test_valid_name_prints_greeting(self):
+        with patch("builtins.input", return_value="Master"), \
+             patch("builtins.print") as mock_print:
+            main()
+            mock_print.assert_called_once_with("Hello, Master!")
+
+    def test_empty_input_does_not_crash(self):
+        # User hits Enter with no input — should print an error, not raise
+        with patch("builtins.input", return_value=""), \
+             patch("builtins.print") as mock_print:
+            main()  # must not raise
+            args = mock_print.call_args[0][0]
+            self.assertIn("Error", args)
 
 
 if __name__ == "__main__":

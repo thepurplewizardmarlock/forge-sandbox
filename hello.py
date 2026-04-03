@@ -52,6 +52,14 @@ def shout(name: str) -> str:
     return f"HELLO, {_normalize(name).upper()}!"
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Interactive entry point. Handles user input errors gracefully."""
     user_input = input("What's your name? ")
-    print(greet(user_input))
+    try:
+        print(greet(user_input))
+    except (ValueError, TypeError) as e:
+        print(f"Error: {e}")
+
+
+if __name__ == "__main__":
+    main()
