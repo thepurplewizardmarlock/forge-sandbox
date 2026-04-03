@@ -21,7 +21,7 @@ def greet(name: str) -> str:
     """
     if not isinstance(name, str):
         raise TypeError(f"Expected a string, got {type(name).__name__}")
-    name = name.strip()
+    name = " ".join(name.split())
     if not name:
         raise ValueError("Name cannot be empty")
     return f"Hello, {name}!"
@@ -42,7 +42,7 @@ def shout(name: str) -> str:
     """
     if not isinstance(name, str):
         raise TypeError(f"Expected a string, got {type(name).__name__}")
-    name = name.strip()
+    name = " ".join(name.split())
     if not name:
         raise ValueError("Name cannot be empty")
     return f"HELLO, {name.upper()}!"

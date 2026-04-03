@@ -19,6 +19,10 @@ class TestGreet(unittest.TestCase):
     def test_strips_whitespace(self):
         self.assertEqual(greet("  Master  "), "Hello, Master!")
 
+    def test_normalizes_internal_whitespace(self):
+        # Double space between words should collapse to one
+        self.assertEqual(greet("John  Smith"), "Hello, John Smith!")
+
     def test_empty_string_raises(self):
         with self.assertRaises(ValueError):
             greet("")
