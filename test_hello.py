@@ -7,7 +7,36 @@ Run with:
 """
 
 import unittest
-from hello import greet, shout
+from hello import greet, shout, _normalize
+
+
+class TestNormalize(unittest.TestCase):
+    """Tests for the _normalize() helper."""
+
+    def test_returns_clean_string(self):
+        self.assertEqual(_normalize("Master"), "Master")
+
+    def test_strips_edges(self):
+        self.assertEqual(_normalize("  Master  "), "Master")
+
+    def test_collapses_internal_whitespace(self):
+        self.assertEqual(_normalize("John  Smith"), "John Smith")
+
+    def test_empty_raises(self):
+        with self.assertRaises(ValueError):
+            _normalize("")
+
+    def test_whitespace_only_raises(self):
+        with self.assertRaises(ValueError):
+            _normalize("   ")
+
+    def test_non_string_raises(self):
+        with self.assertRaises(TypeError):
+            _normalize(42)
+
+    def test_none_raises(self):
+        with self.assertRaises(TypeError):
+            _normalize(None)
 
 
 class TestGreet(unittest.TestCase):
