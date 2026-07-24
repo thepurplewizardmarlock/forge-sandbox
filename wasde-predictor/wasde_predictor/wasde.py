@@ -88,13 +88,18 @@ def _resolve_headers(fieldnames: list[str]) -> dict[str, str]:
     return resolved
 
 
-def load_yield_reports(
+def load_reports(
     path: str | Path,
     commodity: str = "Corn",
     region: str = "United States",
     attribute: str = "Yield per Harvested Acre",
 ) -> list[YieldReport]:
-    """Read a WASDE-style CSV and return the corn US yield reports, date-sorted."""
+    """Read a WASDE-style CSV and return one attribute's reports, date-sorted.
+
+    `attribute` selects the balance-sheet line: "Yield per Harvested Acre" (the
+    default) or "Ending Stocks", etc. Despite the class name YieldReport, this
+    returns whatever attribute you ask for (value carries that attribute's unit).
+    """
     path = Path(path)
     reports: list[YieldReport] = []
     with path.open(newline="") as fh:
@@ -116,6 +121,10 @@ def load_yield_reports(
             )
     reports.sort(key=lambda r: r.report_date)
     return reports
+
+
+# Backward-compatible alias (v1 called this load_yield_reports).
+load_yield_reports = load_reports
 
 
 def revisions(

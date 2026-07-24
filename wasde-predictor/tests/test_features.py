@@ -48,5 +48,32 @@ class BuildFeaturesTests(unittest.TestCase):
         self.assertEqual(weeks, [])
 
 
+class DemandFeaturesTests(unittest.TestCase):
+    def setUp(self):
+        self.exports = [WeeklyReading(dt.date(2024, 8, 5), "CORN", 3.0),
+                        WeeklyReading(dt.date(2024, 9, 9), "CORN", 6.0)]
+        self.ethanol = [WeeklyReading(dt.date(2024, 8, 5), "US", -1.0),
+                        WeeklyReading(dt.date(2024, 9, 9), "US", 2.0)]
+        self.report = dt.date(2024, 9, 12)
+
+    def test_demand_features_point_in_time(self):
+        feats, weeks = F.build_demand_features(self.report, self.exports, self.ethanol)
+        self.assertEqual(set(feats), set(F.DEMAND_FEATURE_NAMES))
+        self.assertEqual(feats["export_pace_surprise"], 6.0)   # Sep 9 value
+        self.assertEqual(feats["ethanol_pace_surprise"], 2.0)
+        for w in weeks:
+            self.assertLess(w, self.report)
+
+    def test_build_all_merges_supply_and_demand(self):
+        conditions = [WeeklyReading(dt.date(2024, 6, 3), "US TOTAL", 60),
+                      WeeklyReading(dt.date(2024, 9, 9), "US TOTAL", 68)]
+        droughts = [WeeklyReading(dt.date(2024, 6, 3), "US CORN BELT", 15),
+                    WeeklyReading(dt.date(2024, 9, 9), "US CORN BELT", 10)]
+        feats, weeks = F.build_all_features(
+            self.report, dt.date(2024, 8, 12), conditions, droughts,
+            exports=self.exports, ethanol=self.ethanol, include_demand=True)
+        self.assertEqual(set(feats), set(F.FEATURE_NAMES) | set(F.DEMAND_FEATURE_NAMES))
+
+
 if __name__ == "__main__":
     unittest.main()

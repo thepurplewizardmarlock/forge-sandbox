@@ -6,7 +6,7 @@ from pathlib import Path
 from wasde_predictor import wasde
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SAMPLE_YIELD = PROJECT_ROOT / "data" / "sample" / "wasde_corn_yield_sample.csv"
+SAMPLE_YIELD = PROJECT_ROOT / "data" / "sample" / "wasde_corn_sample.csv"
 
 
 def _report(month, value, year=2024, my="2024/25"):

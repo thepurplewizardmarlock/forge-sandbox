@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime as dt
 
 from . import condition as condition_mod
+from . import demand as demand_mod
 from . import series
 from . import weather as weather_mod
 
@@ -26,6 +27,12 @@ FEATURE_NAMES = [
     "condition_vs_season_start",
     "drought_d2plus",
     "drought_change",
+]
+
+# Extra features used only for the ending-stocks (demand-sensitive) target.
+DEMAND_FEATURE_NAMES = [
+    "export_pace_surprise",
+    "ethanol_pace_surprise",
 ]
 
 
@@ -66,3 +73,42 @@ def build_features(
         "drought_change": d_now.value - d_prev.value if d_prev else 0.0,
     }
     return features, weeks
+
+
+def build_demand_features(
+    report_date: dt.date,
+    exports: list[series.WeeklyReading],
+    ethanol: list[series.WeeklyReading],
+) -> tuple[dict[str, float] | None, list[dt.date]]:
+    e = series.latest_before(exports, report_date, demand_mod.CORN)
+    et = series.latest_before(ethanol, report_date, demand_mod.US)
+    if e is None or et is None:
+        return None, []
+    features = {"export_pace_surprise": e.value, "ethanol_pace_surprise": et.value}
+    return features, [e.week_ending, et.week_ending]
+
+
+def build_all_features(
+    report_date: dt.date,
+    prev_report_date: dt.date | None,
+    conditions: list[series.WeeklyReading],
+    droughts: list[series.WeeklyReading],
+    exports: list[series.WeeklyReading] | None = None,
+    ethanol: list[series.WeeklyReading] | None = None,
+    include_demand: bool = False,
+) -> tuple[dict[str, float] | None, list[dt.date]]:
+    """Supply features, plus demand features when include_demand is set.
+
+    Returns (None, []) if any required clue is missing before the report, so the
+    caller can simply skip that observation.
+    """
+    feats, weeks = build_features(report_date, prev_report_date, conditions, droughts)
+    if feats is None:
+        return None, []
+    if include_demand:
+        dfeats, dweeks = build_demand_features(report_date, exports or [], ethanol or [])
+        if dfeats is None:
+            return None, []
+        feats = {**feats, **dfeats}
+        weeks = weeks + dweeks
+    return feats, weeks

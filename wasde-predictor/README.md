@@ -31,13 +31,24 @@ survey yields (so the clues matter); earlier it just holds yield at a fixed tren
 
 ```bash
 cd wasde-predictor
-python3 cli.py run                              # score direction baselines vs. models
-python3 cli.py regress                          # score magnitude models (bushels/acre)
+python3 cli.py run                              # direction: baselines vs. models
+python3 cli.py regress                          # magnitude (units of the target)
 python3 cli.py predict-next                     # forecast the next upcoming report
 python3 -m unittest discover -s tests -t .      # run the tests
+
+# choose the target with --target (default: yield):
+python3 cli.py run --target ending-stocks       # the market's headline number
 ```
 
-Both commands default to the bundled **synthetic** sample data.
+All commands default to the bundled **synthetic** sample data.
+
+### Two targets
+
+- **`--target yield`** (default) — predicts USDA's corn *yield* revision from the
+  supply clues (condition, drought). Yield is the biggest driver of the pantry.
+- **`--target ending-stocks`** — predicts the *ending stocks* revision (the number
+  traders actually watch). Ending stocks = supply − demand, so this target adds
+  two **demand clues**: export-pace surprise and ethanol-grind surprise.
 
 ## How to read the `run` output
 
@@ -88,9 +99,13 @@ them in:
    summed, US total, weekly → `week_ending, state, value`.
 3. **Drought** — U.S. Drought Monitor, % of a corn-belt region in D2+ drought,
    weekly → `week_ending, region, value`.
+4. **(ending-stocks target only) Exports** — USDA FAS weekly export sales, as a
+   pace-vs-normal surprise → `week_ending, commodity, value`.
+5. **(ending-stocks target only) Ethanol** — EIA weekly ethanol production, as a
+   grind-vs-normal surprise → `week_ending, region, value`.
 
 ```bash
-python3 cli.py run --yield-file data/raw/wasde.csv \
+python3 cli.py run --wasde-file data/raw/wasde.csv \
                    --condition-file data/raw/condition.csv \
                    --drought-file data/raw/drought.csv
 ```
@@ -116,14 +131,17 @@ Anything under `data/raw/` is git-ignored, so real downloads stay local.
 wasde-predictor/
   cli.py                     # `run` (scoreboard) and `predict-next`
   wasde_predictor/
-    wasde.py                 # load yield history; Aug-Nov revisions + labels
+    wasde.py                 # load any WASDE attribute (yield / ending stocks) + revisions
     series.py                # generic weekly series + point-in-time (leak-safe) accessors
     condition.py             # crop-condition loader
     weather.py               # drought loader
-    features.py              # build the 5-feature clue vector (leak-safe)
-    dataset.py               # join target + clues into observations
-    models.py                # majority + persistence baselines; threshold + logistic models
-    evaluate.py              # accuracy, precision/recall/F1, confusion, leave-one-year-out
+    demand.py                # export-pace + ethanol-pace loaders (ending-stocks target)
+    features.py              # build the supply (+demand) clue vector (leak-safe)
+    dataset.py               # join target + clues into observations (target-selectable)
+    models.py                # majority + persistence baselines; threshold + logistic
+    regression.py            # magnitude models (zero/mean/persistence + ridge)
+    sklearn_models.py        # OPTIONAL gradient-boosted trees (classifier + regressor)
+    evaluate.py              # accuracy, precision/recall/F1, confusion, MAE/RMSE, LOYO
   tools/make_sample_data.py  # regenerate the synthetic sample (deterministic)
   data/sample/               # synthetic CSVs (committed, clearly fake)
   data/raw/                  # your real USDA downloads (git-ignored)
@@ -140,7 +158,8 @@ wasde-predictor/
 6. ✅ Optional scikit-learn gradient boosting (`pip install scikit-learn`) — and
    the honest finding that on this small sample it does *not* beat the plain
    logistic/ridge models (it overfits).
-7. ▫️ Move from yield to full **ending stocks**; add demand clues (exports, ethanol).
+7. ✅ Full **ending stocks** target (`--target ending-stocks`) with demand clues
+   (export-pace + ethanol-pace surprises).
 8. ▫️ Extend to soybeans and wheat.
 
 > Note: the data in `data/sample/` is **synthetic and for testing only** — it is

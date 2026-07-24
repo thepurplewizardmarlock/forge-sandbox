@@ -5,22 +5,23 @@ to let the whole pipeline run and the tests pass without a network connection.
 Replace the files in data/sample/ with real USDA downloads to get real results
 (see README.md -> "Getting real data").
 
-The generated CSVs deliberately mimic the *shape* of the real sources:
-  * wasde_corn_yield_sample.csv  -> like USDA's Consolidated Historical WASDE CSV
-    (Commodity, Region, Attribute, MarketYear, ReportDate, Value, Unit)
-  * crop_condition_sample.csv    -> like NASS "% Good/Excellent" weekly readings
-    (week_ending, state, metric, value)
-  * drought_sample.csv           -> like the U.S. Drought Monitor weekly % area
-    (week_ending, region, metric, value)   [value = % of corn area in D2+ drought]
+Files it writes (all mimic the SHAPE of the real sources):
+  * wasde_corn_sample.csv       -> USDA Consolidated Historical WASDE CSV. Now
+    carries TWO attributes: "Yield per Harvested Acre" and "Ending Stocks".
+  * crop_condition_sample.csv   -> NASS weekly "% good/excellent"
+  * drought_sample.csv          -> Drought Monitor weekly "% corn area in D2+"
+  * exports_sample.csv          -> weekly export-commitment pace surprise (pct pts
+    vs. the normal pace; + = selling faster than normal -> fewer ending stocks)
+  * ethanol_sample.csv          -> weekly ethanol-grind pace surprise (+ = grinding
+    faster than needed -> fewer ending stocks)
+  * current_*_sample.csv        -> an in-progress 2025/26 season (no yield yet) so
+    `cli.py predict-next` has an upcoming report to forecast.
 
-A latent "season quality" per year drives the crop-condition path, the drought
-path, AND the month-to-month yield revisions -- so healthier crop + less drought
-tends to lead USDA to revise yield UP, just as in reality. Condition and drought
-each carry independent noise, so both are individually useful clues.
-
-Also emits a "current season" (no yield yet) so `cli.py predict-next` has an
-upcoming report to forecast:
-  * current_condition_sample.csv / current_drought_sample.csv
+Latent drivers: a per-year "season quality" moves condition, drought AND yield;
+independent per-year export/ethanol strengths move the demand clues. Ending
+stocks are then built from the yield revision (supply) minus the demand
+surprises -- so BOTH the supply clues and the demand clues carry real signal for
+the ending-stocks target, just like reality.
 
 Run:  python3 tools/make_sample_data.py
 """
@@ -33,14 +34,15 @@ from pathlib import Path
 
 SAMPLE_DIR = Path(__file__).resolve().parent.parent / "data" / "sample"
 
-START_YEARS = list(range(2013, 2025))  # 2013/14 .. 2024/25 -> 12 historical seasons
-CURRENT_YEAR = 2025                     # 2025/26 "in progress" season for predict-next
-CURRENT_ASOF = dt.date(2025, 9, 5)      # pretend today is early September
+START_YEARS = list(range(2013, 2025))  # 12 historical seasons
+CURRENT_YEAR = 2025
+CURRENT_ASOF = dt.date(2025, 9, 5)
 
-NORMAL_GE = 64.0        # long-run "normal" % good/excellent
-NORMAL_DROUGHT = 12.0   # long-run "normal" % of corn area in D2+ drought
+NORMAL_GE = 64.0
+NORMAL_DROUGHT = 12.0
+BASE_ENDING_STOCKS = 1800.0  # million bushels, a plausible corn carryout
 REPORT_DAYS = {7: 12, 8: 12, 9: 12, 10: 11, 11: 9}
-REPORT_MONTHS = [7, 8, 9, 10, 11]  # July = pre-survey trend baseline; Aug-Nov = targets
+REPORT_MONTHS = [7, 8, 9, 10, 11]
 
 
 def _mondays(start: dt.date, end: dt.date):
@@ -52,73 +54,96 @@ def _mondays(start: dt.date, end: dt.date):
         d += dt.timedelta(days=7)
 
 
-def _clamp(x: float, lo: float, hi: float) -> float:
+def _clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
 
-def _season_paths(rng: random.Random, year: int, end: dt.date):
-    """Return {monday: ge}, {monday: drought} for a season, sharing a latent."""
-    season = rng.gauss(0.0, 6.0)  # + good year, - bad year
-    ge, drought = {}, {}
-    cur_ge = NORMAL_GE + season + rng.gauss(0.0, 2.0)
-    cur_dr = NORMAL_DROUGHT - 0.7 * season + rng.gauss(0.0, 2.0)
-    for monday in _mondays(dt.date(year, 6, 1), end):
-        cur_ge = _clamp(cur_ge + rng.gauss(0.0, 1.5), 30.0, 92.0)
-        cur_dr = _clamp(cur_dr + rng.gauss(0.0, 1.2), 0.0, 70.0)
-        ge[monday] = round(cur_ge, 0)
-        drought[monday] = round(cur_dr, 0)
-    return season, ge, drought
-
-
-def _before(series: dict, when: dt.date, default: float) -> float:
+def _before(series, when, default):
     vals = [v for wk, v in series.items() if wk < when]
     return vals[-1] if vals else default
 
 
+def _paths(rng, year, end):
+    """Weekly condition, drought, export-surprise, ethanol-surprise for a season."""
+    season = rng.gauss(0.0, 6.0)
+    export_strength = rng.gauss(0.0, 6.0)
+    ethanol_strength = rng.gauss(0.0, 4.0)
+    ge, dr, exp, eth = {}, {}, {}, {}
+    cur_ge = NORMAL_GE + season + rng.gauss(0.0, 2.0)
+    cur_dr = NORMAL_DROUGHT - 0.7 * season + rng.gauss(0.0, 2.0)
+    cur_exp = export_strength
+    cur_eth = ethanol_strength
+    for monday in _mondays(dt.date(year, 6, 1), end):
+        cur_ge = _clamp(cur_ge + rng.gauss(0.0, 1.5), 30.0, 92.0)
+        cur_dr = _clamp(cur_dr + rng.gauss(0.0, 1.2), 0.0, 70.0)
+        cur_exp = _clamp(cur_exp + rng.gauss(0.0, 1.0), -25.0, 25.0)
+        cur_eth = _clamp(cur_eth + rng.gauss(0.0, 0.8), -20.0, 20.0)
+        ge[monday] = round(cur_ge, 0)
+        dr[monday] = round(cur_dr, 0)
+        exp[monday] = round(cur_exp, 1)
+        eth[monday] = round(cur_eth, 1)
+    return ge, dr, exp, eth
+
+
 def build():
     rng = random.Random(20260724)
-    yield_rows, condition_rows, drought_rows = [], [], []
+    wasde_rows, cond_rows, dr_rows, exp_rows, eth_rows = [], [], [], [], []
 
-    def emit_condition(monday, value, state="US TOTAL"):
-        condition_rows.append({"week_ending": monday.isoformat(), "state": state,
-                               "metric": "PCT GOOD_EXCELLENT", "value": f"{value:.0f}"})
-
-    def emit_drought(monday, value, region="US CORN BELT"):
-        drought_rows.append({"week_ending": monday.isoformat(), "region": region,
-                             "metric": "PCT_AREA_D2PLUS", "value": f"{value:.0f}"})
+    def wasde_row(attr, my, date, val, unit):
+        wasde_rows.append({"Commodity": "Corn", "Region": "United States", "Attribute": attr,
+                           "MarketYear": my, "ReportDate": date.isoformat(),
+                           "Value": val, "Unit": unit})
 
     for y in START_YEARS:
-        market_year = f"{y}/{str(y + 1)[-2:]}"
-        _, ge, drought = _season_paths(rng, y, dt.date(y, 11, 30))
-        for monday in sorted(ge):
-            emit_condition(monday, ge[monday])
-            emit_drought(monday, drought[monday])
+        my = f"{y}/{str(y + 1)[-2:]}"
+        ge, dr, exp, eth = _paths(rng, y, dt.date(y, 11, 30))
+        for wk in sorted(ge):
+            cond_rows.append({"week_ending": wk.isoformat(), "state": "US TOTAL",
+                              "metric": "PCT GOOD_EXCELLENT", "value": f"{ge[wk]:.0f}"})
+            dr_rows.append({"week_ending": wk.isoformat(), "region": "US CORN BELT",
+                            "metric": "PCT_AREA_D2PLUS", "value": f"{dr[wk]:.0f}"})
+            exp_rows.append({"week_ending": wk.isoformat(), "commodity": "CORN",
+                             "metric": "EXPORT_PACE_SURPRISE", "value": f"{exp[wk]:.1f}"})
+            eth_rows.append({"week_ending": wk.isoformat(), "region": "US",
+                             "metric": "ETHANOL_PACE_SURPRISE", "value": f"{eth[wk]:.1f}"})
 
         trend = 158.0 + 1.4 * (y - 2013) + rng.gauss(0.0, 2.0)
-        prev = trend
+        prev_yield = trend
+        prev_es = BASE_ENDING_STOCKS + rng.gauss(0.0, 150.0)
         for m in REPORT_MONTHS:
-            report_date = dt.date(y, m, REPORT_DAYS[m])
+            date = dt.date(y, m, REPORT_DAYS[m])
             if m == 7:
-                val = trend
+                yld = trend
+                es = prev_es
             else:
-                ge_at = _before(ge, report_date, NORMAL_GE)
-                dr_at = _before(drought, report_date, NORMAL_DROUGHT)
-                revision = 0.12 * (ge_at - NORMAL_GE) - 0.07 * (dr_at - NORMAL_DROUGHT) + rng.gauss(0.0, 0.7)
-                val = prev + revision
-            yield_rows.append({"Commodity": "Corn", "Region": "United States",
-                               "Attribute": "Yield per Harvested Acre", "MarketYear": market_year,
-                               "ReportDate": report_date.isoformat(), "Value": f"{val:.1f}",
-                               "Unit": "bu/acre"})
-            prev = val
+                ge_at = _before(ge, date, NORMAL_GE)
+                dr_at = _before(dr, date, NORMAL_DROUGHT)
+                exp_at = _before(exp, date, 0.0)
+                eth_at = _before(eth, date, 0.0)
+                yld = prev_yield + 0.12 * (ge_at - NORMAL_GE) - 0.07 * (dr_at - NORMAL_DROUGHT) + rng.gauss(0.0, 0.7)
+                yield_rev = yld - prev_yield
+                es = prev_es + 55.0 * yield_rev - 4.0 * exp_at - 3.0 * eth_at + rng.gauss(0.0, 20.0)
+            wasde_row("Yield per Harvested Acre", my, date, f"{yld:.1f}", "bu/acre")
+            wasde_row("Ending Stocks", my, date, f"{es:.0f}", "million bushels")
+            prev_yield, prev_es = yld, es
 
-    # Current in-progress season (condition + drought only, no yield yet).
-    _, ge_cur, dr_cur = _season_paths(rng, CURRENT_YEAR, CURRENT_ASOF)
-    cur_condition = [{"week_ending": wk.isoformat(), "state": "US TOTAL",
-                      "metric": "PCT GOOD_EXCELLENT", "value": f"{v:.0f}"} for wk, v in sorted(ge_cur.items())]
-    cur_drought = [{"week_ending": wk.isoformat(), "region": "US CORN BELT",
-                    "metric": "PCT_AREA_D2PLUS", "value": f"{v:.0f}"} for wk, v in sorted(dr_cur.items())]
-
-    return yield_rows, condition_rows, drought_rows, cur_condition, cur_drought
+    # Current in-progress season (clues only, no yield/ending stocks yet).
+    ge_c, dr_c, exp_c, eth_c = _paths(rng, CURRENT_YEAR, CURRENT_ASOF)
+    cur = {
+        "current_condition_sample.csv": ([{"week_ending": wk.isoformat(), "state": "US TOTAL",
+            "metric": "PCT GOOD_EXCELLENT", "value": f"{v:.0f}"} for wk, v in sorted(ge_c.items())],
+            ["week_ending", "state", "metric", "value"]),
+        "current_drought_sample.csv": ([{"week_ending": wk.isoformat(), "region": "US CORN BELT",
+            "metric": "PCT_AREA_D2PLUS", "value": f"{v:.0f}"} for wk, v in sorted(dr_c.items())],
+            ["week_ending", "region", "metric", "value"]),
+        "current_exports_sample.csv": ([{"week_ending": wk.isoformat(), "commodity": "CORN",
+            "metric": "EXPORT_PACE_SURPRISE", "value": f"{v:.1f}"} for wk, v in sorted(exp_c.items())],
+            ["week_ending", "commodity", "metric", "value"]),
+        "current_ethanol_sample.csv": ([{"week_ending": wk.isoformat(), "region": "US",
+            "metric": "ETHANOL_PACE_SURPRISE", "value": f"{v:.1f}"} for wk, v in sorted(eth_c.items())],
+            ["week_ending", "region", "metric", "value"]),
+    }
+    return wasde_rows, cond_rows, dr_rows, exp_rows, eth_rows, cur
 
 
 def _write(path: Path, rows, fieldnames):
@@ -131,13 +156,15 @@ def _write(path: Path, rows, fieldnames):
 
 
 def main():
-    yr, cond, dr, cur_c, cur_d = build()
-    _write(SAMPLE_DIR / "wasde_corn_yield_sample.csv", yr,
+    wasde_rows, cond, dr, exp, eth, cur = build()
+    _write(SAMPLE_DIR / "wasde_corn_sample.csv", wasde_rows,
            ["Commodity", "Region", "Attribute", "MarketYear", "ReportDate", "Value", "Unit"])
     _write(SAMPLE_DIR / "crop_condition_sample.csv", cond, ["week_ending", "state", "metric", "value"])
     _write(SAMPLE_DIR / "drought_sample.csv", dr, ["week_ending", "region", "metric", "value"])
-    _write(SAMPLE_DIR / "current_condition_sample.csv", cur_c, ["week_ending", "state", "metric", "value"])
-    _write(SAMPLE_DIR / "current_drought_sample.csv", cur_d, ["week_ending", "region", "metric", "value"])
+    _write(SAMPLE_DIR / "exports_sample.csv", exp, ["week_ending", "commodity", "metric", "value"])
+    _write(SAMPLE_DIR / "ethanol_sample.csv", eth, ["week_ending", "region", "metric", "value"])
+    for name, (rows, fields) in cur.items():
+        _write(SAMPLE_DIR / name, rows, fields)
 
 
 if __name__ == "__main__":

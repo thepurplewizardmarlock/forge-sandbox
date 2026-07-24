@@ -1,12 +1,15 @@
 """Join the target and the clues into model-ready observations.
 
 Each observation is one August-November corn report:
-  * label    -> did USDA raise the yield that month? (1 up, 0 down/flat)
+  * label    -> did USDA raise the number that month? (1 up, 0 down/flat)
+  * change   -> the actual change (bushels/acre for yield, million bu for stocks)
   * features -> the clue vector known *before* that report's noon release
   * meta     -> marketing year, report date, and every source week used
 
-`feature_weeks` is carried through on purpose so a test can assert every one is
-strictly before the report date -- our anti-leakage guarantee.
+The target attribute is selectable: "Yield per Harvested Acre" (supply clues only)
+or "Ending Stocks" (adds the demand clues). `feature_weeks` is carried through so
+a test can assert every one is strictly before the report date -- the anti-leakage
+guarantee.
 """
 from __future__ import annotations
 
@@ -15,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import condition as condition_mod
+from . import demand as demand_mod
 from . import features as features_mod
 from . import weather as weather_mod
 from . import wasde as wasde_mod
@@ -25,23 +29,32 @@ class Observation:
     market_year: str
     report_date: dt.date
     month: int
-    label: int                       # 1 = USDA raised yield, 0 = lowered/unchanged
-    change: float                    # the actual yield change (for reference only)
+    label: int                       # 1 = USDA raised the number, 0 = lowered/unchanged
+    change: float                    # the actual change (units depend on the target)
     features: dict[str, float] = field(default_factory=dict)
     feature_weeks: tuple[dt.date, ...] = ()
-    prev_direction: int | None = None  # direction of the previous report this season (for persistence)
-    prev_change: float | None = None   # magnitude of the previous report's change (for persistence regression)
+    prev_direction: int | None = None
+    prev_change: float | None = None
 
 
 def build_dataset(
-    yield_path: str | Path,
+    wasde_path: str | Path,
     condition_path: str | Path,
     drought_path: str | Path,
+    *,
+    exports_path: str | Path | None = None,
+    ethanol_path: str | Path | None = None,
+    commodity: str = "Corn",
+    attribute: str = "Yield per Harvested Acre",
 ) -> list[Observation]:
-    reports = wasde_mod.load_yield_reports(yield_path)
+    include_demand = exports_path is not None and ethanol_path is not None
+
+    reports = wasde_mod.load_reports(wasde_path, commodity=commodity, attribute=attribute)
     revs = wasde_mod.revisions(reports)
     conditions = condition_mod.load_condition(condition_path)
     droughts = weather_mod.load_drought(drought_path)
+    exports = demand_mod.load_exports(exports_path) if include_demand else None
+    ethanol = demand_mod.load_ethanol(ethanol_path) if include_demand else None
 
     by_year: dict[str, list] = {}
     for rev in revs:
@@ -49,11 +62,12 @@ def build_dataset(
 
     observations: list[Observation] = []
     for market_year in sorted(by_year):
-        prev_direction: int | None = None  # no prior target report at the season's start
+        prev_direction: int | None = None
         prev_change: float | None = None
         for rev in sorted(by_year[market_year], key=lambda r: r.report_date):
-            feats, weeks = features_mod.build_features(
-                rev.report_date, rev.prev_report_date, conditions, droughts
+            feats, weeks = features_mod.build_all_features(
+                rev.report_date, rev.prev_report_date, conditions, droughts,
+                exports=exports, ethanol=ethanol, include_demand=include_demand,
             )
             if feats is not None:
                 observations.append(
@@ -69,7 +83,6 @@ def build_dataset(
                         prev_change=prev_change,
                     )
                 )
-            # The previous report actually happened even if we couldn't build features.
             prev_direction = rev.direction
             prev_change = rev.change
     observations.sort(key=lambda o: o.report_date)
