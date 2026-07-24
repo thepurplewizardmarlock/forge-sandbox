@@ -7,10 +7,10 @@ from wasde_predictor.dataset import build_dataset, class_balance
 
 SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
 WASDE = SAMPLE / "wasde_corn_sample.csv"
-COND = SAMPLE / "crop_condition_sample.csv"
-DROUGHT = SAMPLE / "drought_sample.csv"
-EXP = SAMPLE / "exports_sample.csv"
-ETH = SAMPLE / "ethanol_sample.csv"
+COND = SAMPLE / "condition_corn_sample.csv"
+DROUGHT = SAMPLE / "drought_corn_sample.csv"
+EXP = SAMPLE / "exports_corn_sample.csv"
+ETH = SAMPLE / "ethanol_corn_sample.csv"
 
 
 class YieldDatasetTests(unittest.TestCase):
@@ -64,6 +64,21 @@ class EndingStocksDatasetTests(unittest.TestCase):
     def test_changes_are_in_million_bushels_scale(self):
         # ending-stocks changes are much bigger than yield changes (bushels/acre)
         self.assertTrue(any(abs(o.change) > 10 for o in self.obs))
+
+
+class SoybeansDatasetTests(unittest.TestCase):
+    def test_soybeans_yield_dataset_builds(self):
+        obs = build_dataset(
+            SAMPLE / "wasde_soybeans_sample.csv",
+            SAMPLE / "condition_soybeans_sample.csv",
+            SAMPLE / "drought_soybeans_sample.csv",
+            commodity="Soybeans",
+        )
+        self.assertTrue(obs)
+        self.assertEqual(set(obs[0].features), set(F.FEATURE_NAMES))
+        for o in obs:  # leak guard holds for the other commodity too
+            for w in o.feature_weeks:
+                self.assertLess(w, o.report_date)
 
 
 if __name__ == "__main__":

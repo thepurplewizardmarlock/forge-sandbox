@@ -36,11 +36,19 @@ python3 cli.py regress                          # magnitude (units of the target
 python3 cli.py predict-next                     # forecast the next upcoming report
 python3 -m unittest discover -s tests -t .      # run the tests
 
-# choose the target with --target (default: yield):
-python3 cli.py run --target ending-stocks       # the market's headline number
+# choose the commodity and target:
+python3 cli.py run --commodity soybeans         # corn | soybeans | wheat
+python3 cli.py run --commodity corn --target ending-stocks   # the headline number
 ```
 
 All commands default to the bundled **synthetic** sample data.
+
+### Three commodities
+
+`--commodity corn|soybeans|wheat` (default corn). Corn and soybeans both fit the
+August–November survey-yield window well. **Wheat is an approximate extension** —
+its real yield is largely settled by the late-September Small Grains Summary, so
+the row-crop window is a simplification; the CLI prints a note when you select it.
 
 ### Two targets
 
@@ -160,7 +168,15 @@ wasde-predictor/
    logistic/ridge models (it overfits).
 7. ✅ Full **ending stocks** target (`--target ending-stocks`) with demand clues
    (export-pace + ethanol-pace surprises).
-8. ▫️ Extend to soybeans and wheat.
+8. ✅ **Soybeans and wheat** via `--commodity` (wheat approximate; ending-stocks
+   remains corn-only for now, since demand clues are commodity-specific).
+
+### Beyond v1 (natural next steps)
+
+- Commodity-specific demand clues (soybean crush, wheat exports) to unlock the
+  ending-stocks target for soybeans/wheat.
+- A wheat-appropriate seasonal window (winter/spring wheat, Small Grains Summary).
+- Real-data wiring: small scripted fetchers where a source's terms allow it.
 
 > Note: the data in `data/sample/` is **synthetic and for testing only** — it is
 > not real USDA data and must not be read as such.
