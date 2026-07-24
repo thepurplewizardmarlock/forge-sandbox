@@ -45,10 +45,11 @@ All commands default to the bundled **synthetic** sample data.
 
 ### Three commodities
 
-`--commodity corn|soybeans|wheat` (default corn). Corn and soybeans both fit the
-August–November survey-yield window well. **Wheat is an approximate extension** —
-its real yield is largely settled by the late-September Small Grains Summary, so
-the row-crop window is a simplification; the CLI prints a note when you select it.
+`--commodity corn|soybeans|wheat` (default corn). Corn and soybeans use the
+August–November survey-yield window. **Wheat uses its own May–September window**
+(winter-wheat harvest + the late-September Small Grains Summary); it still blends
+winter and spring wheat into one series, so it's a simplification and the CLI
+prints a note when you select it.
 
 ### Two targets
 
@@ -172,14 +173,15 @@ wasde-predictor/
    logistic/ridge models (it overfits).
 7. ✅ Full **ending stocks** target (`--target ending-stocks`) with demand clues
    (export-pace + ethanol-pace surprises).
-8. ✅ **Soybeans and wheat** via `--commodity` (wheat window still approximate).
+8. ✅ **Soybeans and wheat** via `--commodity`.
 9. ✅ **Per-commodity demand clues** (corn ethanol, soybean crush, wheat exports)
    — ending stocks now works for every commodity, via a central `commodities.py`.
+10. ✅ **Wheat-appropriate May–Sep window** (winter-wheat harvest + Small Grains Summary).
 
 ### Beyond v1 (natural next steps)
 
-- A wheat-appropriate seasonal window (winter/spring wheat, Small Grains Summary).
-- Real-data converters/fetchers for the standard file names (see below).
+- Real-data converters for the standard file names (see below).
+- Separate winter vs. spring wheat instead of one blended series.
 
 > Note: the data in `data/sample/` is **synthetic and for testing only** — it is
 > not real USDA data and must not be read as such.

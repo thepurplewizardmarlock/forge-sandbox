@@ -39,7 +39,10 @@ SOYBEANS = Commodity("soybeans", "Soybeans", (8, 9, 10, 11), (
     DemandClue("export_pace_surprise", "exports_soybeans", "SOYBEANS", "commodity"),
     DemandClue("crush_pace_surprise", "crush_soybeans", "US", "region"),
 ))
-WHEAT = Commodity("wheat", "Wheat", (8, 9, 10, 11), (
+# Wheat's yield firms up earlier than the row crops: winter-wheat harvest runs
+# May-July and the Small Grains Summary (late Sept) finalizes production, so its
+# survey window is ~May-September rather than Aug-Nov.
+WHEAT = Commodity("wheat", "Wheat", (5, 6, 7, 8, 9), (
     DemandClue("export_pace_surprise", "exports_wheat", "WHEAT", "commodity"),
 ))
 

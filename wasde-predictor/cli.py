@@ -77,6 +77,9 @@ def cmd_run(args):
 
     print(BAR); print(f"  WASDE {c.slug} {t['noun']}-revision DIRECTION  --  v1"); print(BAR)
     _sample_note(is_sample)
+    if c.slug == "wheat":
+        print("  NOTE: wheat uses a May-Sep window and blends winter/spring wheat (simplified).")
+        print(DASH)
     print(f"  Observations                 : {bal['n']}")
     print(f"  Marketing years              : {len({o.market_year for o in obs})}")
     print(f"  Class balance                : {bal['up']} up / {bal['down_or_flat']} down-or-flat"

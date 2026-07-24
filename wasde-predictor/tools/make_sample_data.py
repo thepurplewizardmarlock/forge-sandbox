@@ -40,13 +40,15 @@ START_YEARS = list(range(2013, 2025))
 CURRENT_YEAR = 2025
 CURRENT_ASOF = dt.date(2025, 9, 5)
 NORMAL_DROUGHT = 12.0
-REPORT_DAYS = {5: 12, 6: 11, 7: 12, 8: 12, 9: 12, 10: 11, 11: 9}
+REPORT_DAYS = {4: 9, 5: 12, 6: 11, 7: 12, 8: 12, 9: 12, 10: 11, 11: 9}
 
 # Generative parameters (synthetic only). Structure (which clues) is in commodities.py.
+# `start_month` = when weekly condition/drought begins (wheat starts earlier so its
+# May reports have prior clues; the row crops start in June).
 COMMODITY_GEN = {
-    "corn":     {"base_yield": 158.0, "yslope": 1.4, "ynoise": 0.7, "ge_normal": 64.0, "es_base": 1800.0, "es_ycoef": 55.0},
-    "soybeans": {"base_yield": 46.0,  "yslope": 0.4, "ynoise": 0.4, "ge_normal": 60.0, "es_base": 350.0,  "es_ycoef": 15.0},
-    "wheat":    {"base_yield": 47.0,  "yslope": 0.3, "ynoise": 0.5, "ge_normal": 54.0, "es_base": 700.0,  "es_ycoef": 20.0},
+    "corn":     {"base_yield": 158.0, "yslope": 1.4, "ynoise": 0.7, "ge_normal": 64.0, "es_base": 1800.0, "es_ycoef": 55.0, "start_month": 6},
+    "soybeans": {"base_yield": 46.0,  "yslope": 0.4, "ynoise": 0.4, "ge_normal": 60.0, "es_base": 350.0,  "es_ycoef": 15.0, "start_month": 6},
+    "wheat":    {"base_yield": 47.0,  "yslope": 0.3, "ynoise": 0.5, "ge_normal": 54.0, "es_base": 700.0,  "es_ycoef": 20.0, "start_month": 4},
 }
 DEMAND_GEN = {  # keyed by clue.feature
     "export_pace_surprise":  {"sigma": 6.0, "walk": 1.0, "lo": -25.0, "hi": 25.0, "es_coef": 4.0},
@@ -73,12 +75,12 @@ def _before(series, when, default):
     return vals[-1] if vals else default
 
 
-def _condition_drought(rng, year, end, ge_normal):
+def _condition_drought(rng, year, end, ge_normal, start_month):
     season = rng.gauss(0.0, 6.0)
     ge, dr = {}, {}
     cur_ge = ge_normal + season + rng.gauss(0.0, 2.0)
     cur_dr = NORMAL_DROUGHT - 0.7 * season + rng.gauss(0.0, 2.0)
-    for m in _mondays(dt.date(year, 6, 1), end):
+    for m in _mondays(dt.date(year, start_month, 1), end):
         cur_ge = _clamp(cur_ge + rng.gauss(0.0, 1.5), 30.0, 92.0)
         cur_dr = _clamp(cur_dr + rng.gauss(0.0, 1.2), 0.0, 70.0)
         ge[m] = round(cur_ge, 0)
@@ -86,11 +88,11 @@ def _condition_drought(rng, year, end, ge_normal):
     return ge, dr
 
 
-def _demand_series(rng, year, end, feature):
+def _demand_series(rng, year, end, feature, start_month):
     p = DEMAND_GEN[feature]
     cur = rng.gauss(0.0, p["sigma"])
     s = {}
-    for m in _mondays(dt.date(year, 6, 1), end):
+    for m in _mondays(dt.date(year, start_month, 1), end):
         cur = _clamp(cur + rng.gauss(0.0, p["walk"]), p["lo"], p["hi"])
         s[m] = round(cur, 1)
     return s
@@ -113,6 +115,7 @@ def _weekly_rows(series_by_week, key_column, key, metric):
 def generate_commodity(rng, c: commodities.Commodity):
     gen = COMMODITY_GEN[c.slug]
     ge_normal = gen["ge_normal"]
+    start_month = gen["start_month"]
     months = sorted(set([min(c.report_months) - 1, *c.report_months]))  # + a baseline report
     wasde_rows = []
 
@@ -125,8 +128,8 @@ def generate_commodity(rng, c: commodities.Commodity):
 
     for y in START_YEARS:
         my = f"{y}/{str(y + 1)[-2:]}"
-        ge, dr = _condition_drought(rng, y, dt.date(y, 11, 30), ge_normal)
-        demand = {clue: _demand_series(rng, y, dt.date(y, 11, 30), clue.feature) for clue in c.demand_clues}
+        ge, dr = _condition_drought(rng, y, dt.date(y, 11, 30), ge_normal, start_month)
+        demand = {clue: _demand_series(rng, y, dt.date(y, 11, 30), clue.feature, start_month) for clue in c.demand_clues}
         cond_rows += _weekly_rows(ge, "state", "US TOTAL", "PCT GOOD_EXCELLENT")
         dr_rows += _weekly_rows(dr, "region", "US CORN BELT", "PCT_AREA_D2PLUS")
         for clue in c.demand_clues:
@@ -158,7 +161,7 @@ def generate_commodity(rng, c: commodities.Commodity):
                ["week_ending", clue.key_column, "metric", "value"])
 
     # Current in-progress season (clues only).
-    ge_c, dr_c = _condition_drought(rng, CURRENT_YEAR, CURRENT_ASOF, ge_normal)
+    ge_c, dr_c = _condition_drought(rng, CURRENT_YEAR, CURRENT_ASOF, ge_normal, start_month)
     _write(SAMPLE_DIR / f"current_condition_{c.slug}.csv",
            _weekly_rows(ge_c, "state", "US TOTAL", "PCT GOOD_EXCELLENT"),
            ["week_ending", "state", "metric", "value"])
@@ -166,7 +169,7 @@ def generate_commodity(rng, c: commodities.Commodity):
            _weekly_rows(dr_c, "region", "US CORN BELT", "PCT_AREA_D2PLUS"),
            ["week_ending", "region", "metric", "value"])
     for clue in c.demand_clues:
-        s = _demand_series(rng, CURRENT_YEAR, CURRENT_ASOF, clue.feature)
+        s = _demand_series(rng, CURRENT_YEAR, CURRENT_ASOF, clue.feature, start_month)
         _write(SAMPLE_DIR / f"current_{clue.basename}.csv",
                _weekly_rows(s, clue.key_column, clue.key, clue.feature.upper()),
                ["week_ending", clue.key_column, "metric", "value"])
