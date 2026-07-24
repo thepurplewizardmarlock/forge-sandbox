@@ -34,6 +34,7 @@ cd wasde-predictor
 python3 cli.py run                              # direction: baselines vs. models
 python3 cli.py regress                          # magnitude (units of the target)
 python3 cli.py predict-next                     # forecast the next upcoming report
+python3 cli.py scorecard                        # every commodity x target in one table
 python3 -m unittest discover -s tests -t .      # run the tests
 
 # choose the commodity and target:

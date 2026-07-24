@@ -20,6 +20,7 @@ from pathlib import Path
 
 from wasde_predictor import commodities, condition as condition_mod, evaluate
 from wasde_predictor import features as features_mod
+from wasde_predictor import scorecard as scorecard_mod
 from wasde_predictor import series, sklearn_models, weather as weather_mod
 from wasde_predictor.dataset import Observation, build_dataset, class_balance
 from wasde_predictor.models import (
@@ -200,6 +201,17 @@ def cmd_predict_next(args):
     print(BAR)
 
 
+def cmd_scorecard(args):
+    rows = scorecard_mod.evaluate_all(args.data_dir)
+    print(BAR); print("  WASDE predictor scorecard -- logistic vs. strongest baseline"); print(BAR)
+    _sample_note(args.data_dir == SAMPLE)
+    print(f"  {'commodity':10s} {'target':14s} {'n':>4s} {'logistic':>9s} {'baseline':>9s} {'lift':>7s}")
+    for r in rows:
+        print(f"  {r['commodity']:10s} {r['target']:14s} {r['n']:>4d} "
+              f"{r['logistic']:>9.3f} {r['best_baseline']:>9.3f} {r['lift']:>+7.3f}")
+    print(BAR)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -227,6 +239,10 @@ def build_parser():
     p_next.add_argument("--report-date", default="2025-09-12")
     p_next.add_argument("--prev-report-date", default="2025-08-12")
     p_next.set_defaults(func=cmd_predict_next)
+
+    p_score = sub.add_parser("scorecard", help="evaluate every commodity x target at once")
+    p_score.add_argument("--data-dir", type=Path, default=SAMPLE)
+    p_score.set_defaults(func=cmd_scorecard)
 
     return parser
 
