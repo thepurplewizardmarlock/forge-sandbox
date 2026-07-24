@@ -1,0 +1,11 @@
+# Phase 1 (walking skeleton) needs NOTHING beyond the Python 3.11 standard library.
+# Run it with:  python3 cli.py
+# Run tests with:  python3 -m unittest discover -s tests -t .
+#
+# These come into play in later phases (real features, real models) and are
+# listed here so the environment is ready when we get there:
+#
+# pandas>=2.0          # tabular wrangling once the feature set grows
+# scikit-learn>=1.4    # logistic regression, gradient boosting, proper CV
+# requests>=2.31       # optional: scripted downloads where a source allows it
+# pytest>=8.0          # nicer test runner (the suite also runs under stdlib unittest)

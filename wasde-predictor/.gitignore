@@ -1,0 +1,8 @@
+# Real USDA downloads live here and should NOT be committed (they're large and
+# the pipeline is meant to be pointed at them locally). The synthetic
+# data/sample/ files ARE committed so the demo + tests run out of the box.
+data/raw/
+
+# Python
+__pycache__/
+*.pyc
