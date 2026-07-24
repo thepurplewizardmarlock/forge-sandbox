@@ -1,0 +1,15 @@
+# Phase 1 (walking skeleton) needs NOTHING beyond the Python 3.11 standard library.
+# Run it with:  python3 cli.py
+# Run tests with:  python3 -m unittest discover -s tests -t .
+#
+# OPTIONAL extra: enables the gradient-boosting models in the `run`/`regress`
+# scoreboards. Everything else works without it.
+#
+#   pip install scikit-learn
+#
+# scikit-learn>=1.4
+#
+# Other libs that may help in later phases (not required today):
+# pandas>=2.0          # tabular wrangling if the feature set grows a lot
+# requests>=2.31       # scripted downloads where a source allows it
+# pytest>=8.0          # nicer test runner (the suite also runs under stdlib unittest)
