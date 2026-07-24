@@ -17,7 +17,6 @@ from __future__ import annotations
 import datetime as dt
 
 from . import condition as condition_mod
-from . import demand as demand_mod
 from . import series
 from . import weather as weather_mod
 
@@ -29,11 +28,7 @@ FEATURE_NAMES = [
     "drought_change",
 ]
 
-# Extra features used only for the ending-stocks (demand-sensitive) target.
-DEMAND_FEATURE_NAMES = [
-    "export_pace_surprise",
-    "ethanol_pace_surprise",
-]
+# Demand feature names are per-commodity now (see commodities.py DemandClue.feature).
 
 
 def build_features(
@@ -77,15 +72,22 @@ def build_features(
 
 def build_demand_features(
     report_date: dt.date,
-    exports: list[series.WeeklyReading],
-    ethanol: list[series.WeeklyReading],
+    demand_loaded: list[tuple],
 ) -> tuple[dict[str, float] | None, list[dt.date]]:
-    e = series.latest_before(exports, report_date, demand_mod.CORN)
-    et = series.latest_before(ethanol, report_date, demand_mod.US)
-    if e is None or et is None:
-        return None, []
-    features = {"export_pace_surprise": e.value, "ethanol_pace_surprise": et.value}
-    return features, [e.week_ending, et.week_ending]
+    """Build the demand feature vector from a list of (DemandClue, readings).
+
+    Each clue contributes one feature: its latest point-in-time reading before the
+    report. Returns (None, []) if any clue is missing before the report.
+    """
+    out: dict[str, float] = {}
+    weeks: list[dt.date] = []
+    for clue, readings in demand_loaded:
+        r = series.latest_before(readings, report_date, clue.key)
+        if r is None:
+            return None, []
+        out[clue.feature] = r.value
+        weeks.append(r.week_ending)
+    return out, weeks
 
 
 def build_all_features(
@@ -93,20 +95,18 @@ def build_all_features(
     prev_report_date: dt.date | None,
     conditions: list[series.WeeklyReading],
     droughts: list[series.WeeklyReading],
-    exports: list[series.WeeklyReading] | None = None,
-    ethanol: list[series.WeeklyReading] | None = None,
-    include_demand: bool = False,
+    demand_loaded: list[tuple] | None = None,
 ) -> tuple[dict[str, float] | None, list[dt.date]]:
-    """Supply features, plus demand features when include_demand is set.
+    """Supply features, plus demand features when demand_loaded is provided.
 
-    Returns (None, []) if any required clue is missing before the report, so the
-    caller can simply skip that observation.
+    `demand_loaded` is a list of (DemandClue, readings). Returns (None, []) if any
+    required clue is missing before the report, so the caller can skip that report.
     """
     feats, weeks = build_features(report_date, prev_report_date, conditions, droughts)
     if feats is None:
         return None, []
-    if include_demand:
-        dfeats, dweeks = build_demand_features(report_date, exports or [], ethanol or [])
+    if demand_loaded:
+        dfeats, dweeks = build_demand_features(report_date, demand_loaded)
         if dfeats is None:
             return None, []
         feats = {**feats, **dfeats}

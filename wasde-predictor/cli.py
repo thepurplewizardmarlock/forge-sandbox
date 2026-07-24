@@ -6,11 +6,11 @@
   python3 cli.py predict-next              # forecast the next upcoming report
 
   # pick the commodity and target:
-  python3 cli.py run --commodity soybeans
-  python3 cli.py run --commodity corn --target ending-stocks
+  python3 cli.py run --commodity soybeans --target ending-stocks
 
-Everything defaults to the bundled SYNTHETIC sample data. Point the --*-file
-options at real USDA downloads for real results (see README -> "Getting real data").
+Everything defaults to the bundled SYNTHETIC sample data in data/sample/. Point
+--data-dir at a folder of real USDA downloads (same file names) for real results
+(see README -> "Getting real data").
 """
 from __future__ import annotations
 
@@ -18,11 +18,9 @@ import argparse
 import datetime as dt
 from pathlib import Path
 
-from wasde_predictor import condition as condition_mod
-from wasde_predictor import demand as demand_mod
-from wasde_predictor import evaluate, features as features_mod
-from wasde_predictor import sklearn_models
-from wasde_predictor import weather as weather_mod
+from wasde_predictor import commodities, condition as condition_mod, evaluate
+from wasde_predictor import features as features_mod
+from wasde_predictor import series, sklearn_models, weather as weather_mod
 from wasde_predictor.dataset import Observation, build_dataset, class_balance
 from wasde_predictor.models import (
     ConditionThresholdModel, LogisticRegression, MajorityBaseline, PersistenceBaseline,
@@ -32,60 +30,39 @@ from wasde_predictor.regression import MeanBaseline, PersistenceRegressor, Ridge
 HERE = Path(__file__).resolve().parent
 SAMPLE = HERE / "data" / "sample"
 
-COMMODITIES = ["corn", "soybeans", "wheat"]
 TARGETS = {
     "yield": {"attribute": "Yield per Harvested Acre", "unit": "bu/acre",
               "noun": "yield", "demand": False},
     "ending-stocks": {"attribute": "Ending Stocks", "unit": "million bu",
                       "noun": "ending stocks", "demand": True},
 }
-MONTH = {8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov"}
+MONTH = {5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov"}
 BAR = "=" * 68
 DASH = "-" * 68
 
 
-def _defaults(commodity: str) -> dict:
-    return {
-        "wasde": SAMPLE / f"wasde_{commodity}_sample.csv",
-        "condition": SAMPLE / f"condition_{commodity}_sample.csv",
-        "drought": SAMPLE / f"drought_{commodity}_sample.csv",
-        "exports": SAMPLE / "exports_corn_sample.csv",
-        "ethanol": SAMPLE / "ethanol_corn_sample.csv",
-        "cur_condition": SAMPLE / f"current_condition_{commodity}_sample.csv",
-        "cur_drought": SAMPLE / f"current_drought_{commodity}_sample.csv",
-        "cur_exports": SAMPLE / "current_exports_corn_sample.csv",
-        "cur_ethanol": SAMPLE / "current_ethanol_corn_sample.csv",
-    }
-
-
 def _resolve(args):
-    """Resolve file paths (explicit overrides win over per-commodity defaults)."""
-    d = _defaults(args.commodity)
+    data_dir = args.data_dir
+    c = commodities.get(args.commodity)
     t = TARGETS[args.target]
-    if t["demand"] and args.commodity != "corn":
-        raise SystemExit(
-            f"--target ending-stocks is only wired for corn (its demand clues); "
-            f"'{args.commodity}' supports --target yield.")
-    is_sample = getattr(args, "wasde_file", None) is None
     files = {
-        "wasde": args.wasde_file or d["wasde"],
-        "condition": args.condition_file or d["condition"],
-        "drought": args.drought_file or d["drought"],
-        "exports": getattr(args, "exports_file", None) or d["exports"],
-        "ethanol": getattr(args, "ethanol_file", None) or d["ethanol"],
+        "wasde": args.wasde_file or data_dir / f"wasde_{c.slug}.csv",
+        "condition": args.condition_file or data_dir / f"condition_{c.slug}.csv",
+        "drought": args.drought_file or data_dir / f"drought_{c.slug}.csv",
+        "demand": [(clue, data_dir / f"{clue.basename}.csv") for clue in c.demand_clues],
     }
-    return files, t, is_sample, d
+    is_sample = data_dir == SAMPLE
+    return files, c, t, is_sample
 
 
-def _dataset(files, t, commodity):
-    kw = dict(commodity=commodity.capitalize(), attribute=t["attribute"])
+def _dataset(files, c, t):
+    kw = dict(commodity=c.label, attribute=t["attribute"], target_months=c.report_months)
     if t["demand"]:
-        kw["exports_path"] = files["exports"]
-        kw["ethanol_path"] = files["ethanol"]
+        kw["demand"] = files["demand"]
     return build_dataset(files["wasde"], files["condition"], files["drought"], **kw)
 
 
-def _sample_note(is_sample: bool) -> None:
+def _sample_note(is_sample):
     if is_sample:
         print("  !! SYNTHETIC SAMPLE DATA -- results are illustrative only.")
         print("     On real USDA data expect scores much closer to the baseline;")
@@ -93,21 +70,14 @@ def _sample_note(is_sample: bool) -> None:
         print(DASH)
 
 
-def _title(commodity, t, kind):
-    return f"  WASDE {commodity} {t['noun']}-revision {kind}  --  v1"
-
-
 def cmd_run(args):
-    files, t, is_sample, _ = _resolve(args)
-    obs = _dataset(files, t, args.commodity)
+    files, c, t, is_sample = _resolve(args)
+    obs = _dataset(files, c, t)
     bal = class_balance(obs)
 
-    print(BAR); print(_title(args.commodity, t, "DIRECTION")); print(BAR)
+    print(BAR); print(f"  WASDE {c.slug} {t['noun']}-revision DIRECTION  --  v1"); print(BAR)
     _sample_note(is_sample)
-    if args.commodity == "wheat":
-        print("  NOTE: wheat is an APPROXIMATE extension (its real yield window differs).")
-        print(DASH)
-    print(f"  Observations (Aug-Nov reports): {bal['n']}")
+    print(f"  Observations                 : {bal['n']}")
     print(f"  Marketing years              : {len({o.market_year for o in obs})}")
     print(f"  Class balance                : {bal['up']} up / {bal['down_or_flat']} down-or-flat"
           f"  (up-rate {bal['up_rate']})")
@@ -134,8 +104,8 @@ def cmd_run(args):
     log = results["logistic regression"]
     print("  Logistic regression, 'up' class:")
     print(f"    precision {log['precision']:.3f}   recall {log['recall']:.3f}   F1 {log['f1']:.3f}")
-    c = log["confusion"]
-    print(f"    confusion: tp={c['tp']} fp={c['fp']} tn={c['tn']} fn={c['fn']}")
+    cm = log["confusion"]
+    print(f"    confusion: tp={cm['tp']} fp={cm['fp']} tn={cm['tn']} fn={cm['fn']}")
     print("  Accuracy by report month:")
     for m, s in log["per_month"].items():
         print(f"    {MONTH.get(m, m):>3s}: {s['accuracy']:.3f}  (n={s['n']})")
@@ -161,10 +131,10 @@ def cmd_run(args):
 
 
 def cmd_regress(args):
-    files, t, is_sample, _ = _resolve(args)
-    obs = _dataset(files, t, args.commodity)
+    files, c, t, is_sample = _resolve(args)
+    obs = _dataset(files, c, t)
 
-    print(BAR); print(_title(args.commodity, t, f"MAGNITUDE ({t['unit']})")); print(BAR)
+    print(BAR); print(f"  WASDE {c.slug} {t['noun']}-revision MAGNITUDE ({t['unit']})  --  v1"); print(BAR)
     _sample_note(is_sample)
 
     reg_models = {
@@ -189,20 +159,21 @@ def cmd_regress(args):
 
 
 def cmd_predict_next(args):
-    files, t, is_sample, d = _resolve(args)
-    obs = _dataset(files, t, args.commodity)
+    files, c, t, is_sample = _resolve(args)
+    obs = _dataset(files, c, t)
     model = LogisticRegression().fit(obs)
 
-    conditions = condition_mod.load_condition(args.current_condition_file or d["cur_condition"])
-    droughts = weather_mod.load_drought(args.current_drought_file or d["cur_drought"])
-    exports = demand_mod.load_exports(args.current_exports_file or d["cur_exports"]) if t["demand"] else None
-    ethanol = demand_mod.load_ethanol(args.current_ethanol_file or d["cur_ethanol"]) if t["demand"] else None
+    data_dir = args.data_dir
+    conditions = condition_mod.load_condition(args.current_condition_file or data_dir / f"current_condition_{c.slug}.csv")
+    droughts = weather_mod.load_drought(args.current_drought_file or data_dir / f"current_drought_{c.slug}.csv")
+    demand_loaded = None
+    if t["demand"]:
+        demand_loaded = [(clue, series.load_weekly(data_dir / f"current_{clue.basename}.csv", clue.key_column))
+                         for clue in c.demand_clues]
 
     report_date = dt.date.fromisoformat(args.report_date)
     prev_report_date = dt.date.fromisoformat(args.prev_report_date) if args.prev_report_date else None
-    feats, weeks = features_mod.build_all_features(
-        report_date, prev_report_date, conditions, droughts,
-        exports=exports, ethanol=ethanol, include_demand=t["demand"])
+    feats, weeks = features_mod.build_all_features(report_date, prev_report_date, conditions, droughts, demand_loaded)
     if feats is None:
         raise SystemExit("Not enough current-season data before the report date to build features.")
 
@@ -214,14 +185,14 @@ def cmd_predict_next(args):
 
     print(BAR)
     print(f"  Forecast: {MONTH.get(report_date.month, report_date.month)} {report_date.year} "
-          f"WASDE {args.commodity} {t['noun']} revision")
+          f"WASDE {c.slug} {t['noun']} revision")
     print(BAR)
     _sample_note(is_sample)
     print(f"  Clues known as of {max(weeks).isoformat()} (all before {report_date.isoformat()}):")
     for k in sorted(feats):
         print(f"    {k:26s}: {feats[k]:+.2f}")
     print(DASH)
-    print(f"  Prediction: USDA will revise {args.commodity} {t['noun']}  >>> {direction} <<<")
+    print(f"  Prediction: USDA will revise {c.slug} {t['noun']}  >>> {direction} <<<")
     print(f"  P(up) = {proba:.3f}   (confidence {confidence:.0%})")
     print(BAR)
 
@@ -232,13 +203,13 @@ def build_parser():
     sub = parser.add_subparsers(dest="command")
 
     def add_data_args(p):
-        p.add_argument("--commodity", choices=COMMODITIES, default="corn")
+        p.add_argument("--commodity", choices=sorted(commodities.ALL), default="corn")
         p.add_argument("--target", choices=sorted(TARGETS), default="yield")
+        p.add_argument("--data-dir", type=Path, default=SAMPLE,
+                       help="folder holding the CSVs (default: bundled sample)")
         p.add_argument("--wasde-file", type=Path, default=None)
         p.add_argument("--condition-file", type=Path, default=None)
         p.add_argument("--drought-file", type=Path, default=None)
-        p.add_argument("--exports-file", type=Path, default=None)
-        p.add_argument("--ethanol-file", type=Path, default=None)
 
     p_run = sub.add_parser("run", help="score direction baselines vs. models")
     add_data_args(p_run); p_run.set_defaults(func=cmd_run)
@@ -250,8 +221,6 @@ def build_parser():
     add_data_args(p_next)
     p_next.add_argument("--current-condition-file", type=Path, default=None)
     p_next.add_argument("--current-drought-file", type=Path, default=None)
-    p_next.add_argument("--current-exports-file", type=Path, default=None)
-    p_next.add_argument("--current-ethanol-file", type=Path, default=None)
     p_next.add_argument("--report-date", default="2025-09-12")
     p_next.add_argument("--prev-report-date", default="2025-08-12")
     p_next.set_defaults(func=cmd_predict_next)

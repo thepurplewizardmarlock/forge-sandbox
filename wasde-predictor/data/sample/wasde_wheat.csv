@@ -1,0 +1,121 @@
+Commodity,Region,Attribute,MarketYear,ReportDate,Value,Unit
+Wheat,United States,Yield per Harvested Acre,2013/14,2013-07-12,46.1,bu/acre
+Wheat,United States,Ending Stocks,2013/14,2013-07-12,752,million bushels
+Wheat,United States,Yield per Harvested Acre,2013/14,2013-08-12,47.0,bu/acre
+Wheat,United States,Ending Stocks,2013/14,2013-08-12,802,million bushels
+Wheat,United States,Yield per Harvested Acre,2013/14,2013-09-12,47.2,bu/acre
+Wheat,United States,Ending Stocks,2013/14,2013-09-12,778,million bushels
+Wheat,United States,Yield per Harvested Acre,2013/14,2013-10-11,47.9,bu/acre
+Wheat,United States,Ending Stocks,2013/14,2013-10-11,833,million bushels
+Wheat,United States,Yield per Harvested Acre,2013/14,2013-11-09,46.8,bu/acre
+Wheat,United States,Ending Stocks,2013/14,2013-11-09,821,million bushels
+Wheat,United States,Yield per Harvested Acre,2014/15,2014-07-12,49.8,bu/acre
+Wheat,United States,Ending Stocks,2014/15,2014-07-12,704,million bushels
+Wheat,United States,Yield per Harvested Acre,2014/15,2014-08-12,50.5,bu/acre
+Wheat,United States,Ending Stocks,2014/15,2014-08-12,716,million bushels
+Wheat,United States,Yield per Harvested Acre,2014/15,2014-09-12,51.7,bu/acre
+Wheat,United States,Ending Stocks,2014/15,2014-09-12,739,million bushels
+Wheat,United States,Yield per Harvested Acre,2014/15,2014-10-11,51.8,bu/acre
+Wheat,United States,Ending Stocks,2014/15,2014-10-11,754,million bushels
+Wheat,United States,Yield per Harvested Acre,2014/15,2014-11-09,53.4,bu/acre
+Wheat,United States,Ending Stocks,2014/15,2014-11-09,768,million bushels
+Wheat,United States,Yield per Harvested Acre,2015/16,2015-07-12,50.0,bu/acre
+Wheat,United States,Ending Stocks,2015/16,2015-07-12,677,million bushels
+Wheat,United States,Yield per Harvested Acre,2015/16,2015-08-12,47.9,bu/acre
+Wheat,United States,Ending Stocks,2015/16,2015-08-12,633,million bushels
+Wheat,United States,Yield per Harvested Acre,2015/16,2015-09-12,46.4,bu/acre
+Wheat,United States,Ending Stocks,2015/16,2015-09-12,593,million bushels
+Wheat,United States,Yield per Harvested Acre,2015/16,2015-10-11,44.7,bu/acre
+Wheat,United States,Ending Stocks,2015/16,2015-10-11,566,million bushels
+Wheat,United States,Yield per Harvested Acre,2015/16,2015-11-09,42.9,bu/acre
+Wheat,United States,Ending Stocks,2015/16,2015-11-09,518,million bushels
+Wheat,United States,Yield per Harvested Acre,2016/17,2016-07-12,46.9,bu/acre
+Wheat,United States,Ending Stocks,2016/17,2016-07-12,678,million bushels
+Wheat,United States,Yield per Harvested Acre,2016/17,2016-08-12,45.2,bu/acre
+Wheat,United States,Ending Stocks,2016/17,2016-08-12,588,million bushels
+Wheat,United States,Yield per Harvested Acre,2016/17,2016-09-12,44.2,bu/acre
+Wheat,United States,Ending Stocks,2016/17,2016-09-12,514,million bushels
+Wheat,United States,Yield per Harvested Acre,2016/17,2016-10-11,42.9,bu/acre
+Wheat,United States,Ending Stocks,2016/17,2016-10-11,463,million bushels
+Wheat,United States,Yield per Harvested Acre,2016/17,2016-11-09,41.6,bu/acre
+Wheat,United States,Ending Stocks,2016/17,2016-11-09,405,million bushels
+Wheat,United States,Yield per Harvested Acre,2017/18,2017-07-12,45.8,bu/acre
+Wheat,United States,Ending Stocks,2017/18,2017-07-12,712,million bushels
+Wheat,United States,Yield per Harvested Acre,2017/18,2017-08-12,45.1,bu/acre
+Wheat,United States,Ending Stocks,2017/18,2017-08-12,728,million bushels
+Wheat,United States,Yield per Harvested Acre,2017/18,2017-09-12,45.6,bu/acre
+Wheat,United States,Ending Stocks,2017/18,2017-09-12,794,million bushels
+Wheat,United States,Yield per Harvested Acre,2017/18,2017-10-11,45.4,bu/acre
+Wheat,United States,Ending Stocks,2017/18,2017-10-11,898,million bushels
+Wheat,United States,Yield per Harvested Acre,2017/18,2017-11-09,45.0,bu/acre
+Wheat,United States,Ending Stocks,2017/18,2017-11-09,1005,million bushels
+Wheat,United States,Yield per Harvested Acre,2018/19,2018-07-12,44.7,bu/acre
+Wheat,United States,Ending Stocks,2018/19,2018-07-12,739,million bushels
+Wheat,United States,Yield per Harvested Acre,2018/19,2018-08-12,44.2,bu/acre
+Wheat,United States,Ending Stocks,2018/19,2018-08-12,723,million bushels
+Wheat,United States,Yield per Harvested Acre,2018/19,2018-09-12,42.6,bu/acre
+Wheat,United States,Ending Stocks,2018/19,2018-09-12,692,million bushels
+Wheat,United States,Yield per Harvested Acre,2018/19,2018-10-11,40.0,bu/acre
+Wheat,United States,Ending Stocks,2018/19,2018-10-11,659,million bushels
+Wheat,United States,Yield per Harvested Acre,2018/19,2018-11-09,38.2,bu/acre
+Wheat,United States,Ending Stocks,2018/19,2018-11-09,661,million bushels
+Wheat,United States,Yield per Harvested Acre,2019/20,2019-07-12,48.4,bu/acre
+Wheat,United States,Ending Stocks,2019/20,2019-07-12,590,million bushels
+Wheat,United States,Yield per Harvested Acre,2019/20,2019-08-12,47.7,bu/acre
+Wheat,United States,Ending Stocks,2019/20,2019-08-12,558,million bushels
+Wheat,United States,Yield per Harvested Acre,2019/20,2019-09-12,47.2,bu/acre
+Wheat,United States,Ending Stocks,2019/20,2019-09-12,518,million bushels
+Wheat,United States,Yield per Harvested Acre,2019/20,2019-10-11,45.8,bu/acre
+Wheat,United States,Ending Stocks,2019/20,2019-10-11,421,million bushels
+Wheat,United States,Yield per Harvested Acre,2019/20,2019-11-09,45.1,bu/acre
+Wheat,United States,Ending Stocks,2019/20,2019-11-09,389,million bushels
+Wheat,United States,Yield per Harvested Acre,2020/21,2020-07-12,48.8,bu/acre
+Wheat,United States,Ending Stocks,2020/21,2020-07-12,745,million bushels
+Wheat,United States,Yield per Harvested Acre,2020/21,2020-08-12,48.9,bu/acre
+Wheat,United States,Ending Stocks,2020/21,2020-08-12,746,million bushels
+Wheat,United States,Yield per Harvested Acre,2020/21,2020-09-12,49.7,bu/acre
+Wheat,United States,Ending Stocks,2020/21,2020-09-12,744,million bushels
+Wheat,United States,Yield per Harvested Acre,2020/21,2020-10-11,51.0,bu/acre
+Wheat,United States,Ending Stocks,2020/21,2020-10-11,802,million bushels
+Wheat,United States,Yield per Harvested Acre,2020/21,2020-11-09,52.2,bu/acre
+Wheat,United States,Ending Stocks,2020/21,2020-11-09,834,million bushels
+Wheat,United States,Yield per Harvested Acre,2021/22,2021-07-12,49.7,bu/acre
+Wheat,United States,Ending Stocks,2021/22,2021-07-12,721,million bushels
+Wheat,United States,Yield per Harvested Acre,2021/22,2021-08-12,51.4,bu/acre
+Wheat,United States,Ending Stocks,2021/22,2021-08-12,732,million bushels
+Wheat,United States,Yield per Harvested Acre,2021/22,2021-09-12,52.8,bu/acre
+Wheat,United States,Ending Stocks,2021/22,2021-09-12,763,million bushels
+Wheat,United States,Yield per Harvested Acre,2021/22,2021-10-11,54.8,bu/acre
+Wheat,United States,Ending Stocks,2021/22,2021-10-11,850,million bushels
+Wheat,United States,Yield per Harvested Acre,2021/22,2021-11-09,57.3,bu/acre
+Wheat,United States,Ending Stocks,2021/22,2021-11-09,897,million bushels
+Wheat,United States,Yield per Harvested Acre,2022/23,2022-07-12,50.5,bu/acre
+Wheat,United States,Ending Stocks,2022/23,2022-07-12,692,million bushels
+Wheat,United States,Yield per Harvested Acre,2022/23,2022-08-12,49.4,bu/acre
+Wheat,United States,Ending Stocks,2022/23,2022-08-12,659,million bushels
+Wheat,United States,Yield per Harvested Acre,2022/23,2022-09-12,47.7,bu/acre
+Wheat,United States,Ending Stocks,2022/23,2022-09-12,598,million bushels
+Wheat,United States,Yield per Harvested Acre,2022/23,2022-10-11,47.2,bu/acre
+Wheat,United States,Ending Stocks,2022/23,2022-10-11,589,million bushels
+Wheat,United States,Yield per Harvested Acre,2022/23,2022-11-09,45.1,bu/acre
+Wheat,United States,Ending Stocks,2022/23,2022-11-09,527,million bushels
+Wheat,United States,Yield per Harvested Acre,2023/24,2023-07-12,51.3,bu/acre
+Wheat,United States,Ending Stocks,2023/24,2023-07-12,705,million bushels
+Wheat,United States,Yield per Harvested Acre,2023/24,2023-08-12,51.3,bu/acre
+Wheat,United States,Ending Stocks,2023/24,2023-08-12,631,million bushels
+Wheat,United States,Yield per Harvested Acre,2023/24,2023-09-12,51.1,bu/acre
+Wheat,United States,Ending Stocks,2023/24,2023-09-12,573,million bushels
+Wheat,United States,Yield per Harvested Acre,2023/24,2023-10-11,51.4,bu/acre
+Wheat,United States,Ending Stocks,2023/24,2023-10-11,515,million bushels
+Wheat,United States,Yield per Harvested Acre,2023/24,2023-11-09,50.9,bu/acre
+Wheat,United States,Ending Stocks,2023/24,2023-11-09,533,million bushels
+Wheat,United States,Yield per Harvested Acre,2024/25,2024-07-12,49.9,bu/acre
+Wheat,United States,Ending Stocks,2024/25,2024-07-12,657,million bushels
+Wheat,United States,Yield per Harvested Acre,2024/25,2024-08-12,49.9,bu/acre
+Wheat,United States,Ending Stocks,2024/25,2024-08-12,663,million bushels
+Wheat,United States,Yield per Harvested Acre,2024/25,2024-09-12,50.7,bu/acre
+Wheat,United States,Ending Stocks,2024/25,2024-09-12,688,million bushels
+Wheat,United States,Yield per Harvested Acre,2024/25,2024-10-11,50.5,bu/acre
+Wheat,United States,Ending Stocks,2024/25,2024-10-11,632,million bushels
+Wheat,United States,Yield per Harvested Acre,2024/25,2024-11-09,49.8,bu/acre
+Wheat,United States,Ending Stocks,2024/25,2024-11-09,564,million bushels

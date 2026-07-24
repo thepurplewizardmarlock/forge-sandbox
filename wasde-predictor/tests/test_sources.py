@@ -9,14 +9,14 @@ SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
 
 class LoaderTests(unittest.TestCase):
     def test_condition_loads_us_total(self):
-        readings = condition.load_condition(SAMPLE / "condition_corn_sample.csv")
+        readings = condition.load_condition(SAMPLE / "condition_corn.csv")
         self.assertTrue(readings)
         self.assertTrue(any(r.key == condition.US_TOTAL for r in readings))
         self.assertTrue(all(0 <= r.value <= 100 for r in readings))
         self.assertEqual(readings, sorted(readings, key=lambda r: r.week_ending))
 
     def test_drought_loads_region(self):
-        readings = weather.load_drought(SAMPLE / "drought_corn_sample.csv")
+        readings = weather.load_drought(SAMPLE / "drought_corn.csv")
         self.assertTrue(readings)
         self.assertTrue(all(0 <= r.value <= 100 for r in readings))
 

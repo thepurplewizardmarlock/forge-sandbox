@@ -1,15 +1,15 @@
 """Join the target and the clues into model-ready observations.
 
-Each observation is one August-November corn report:
+Each observation is one report in the target window:
   * label    -> did USDA raise the number that month? (1 up, 0 down/flat)
-  * change   -> the actual change (bushels/acre for yield, million bu for stocks)
+  * change   -> the actual change (units depend on the target)
   * features -> the clue vector known *before* that report's noon release
   * meta     -> marketing year, report date, and every source week used
 
-The target attribute is selectable: "Yield per Harvested Acre" (supply clues only)
-or "Ending Stocks" (adds the demand clues). `feature_weeks` is carried through so
-a test can assert every one is strictly before the report date -- the anti-leakage
-guarantee.
+The target attribute (yield / ending stocks), the demand clues, and the report
+window are all passed in (see commodities.py). `feature_weeks` is carried through
+so a test can assert every one is strictly before the report date -- the
+anti-leakage guarantee.
 """
 from __future__ import annotations
 
@@ -18,10 +18,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import condition as condition_mod
-from . import demand as demand_mod
 from . import features as features_mod
+from . import series
 from . import weather as weather_mod
 from . import wasde as wasde_mod
+
+DEFAULT_MONTHS = (8, 9, 10, 11)
 
 
 @dataclass(frozen=True)
@@ -29,8 +31,8 @@ class Observation:
     market_year: str
     report_date: dt.date
     month: int
-    label: int                       # 1 = USDA raised the number, 0 = lowered/unchanged
-    change: float                    # the actual change (units depend on the target)
+    label: int
+    change: float
     features: dict[str, float] = field(default_factory=dict)
     feature_weeks: tuple[dt.date, ...] = ()
     prev_direction: int | None = None
@@ -42,19 +44,19 @@ def build_dataset(
     condition_path: str | Path,
     drought_path: str | Path,
     *,
-    exports_path: str | Path | None = None,
-    ethanol_path: str | Path | None = None,
+    demand: list[tuple] | None = None,   # list of (DemandClue, path)
     commodity: str = "Corn",
     attribute: str = "Yield per Harvested Acre",
+    target_months: tuple[int, ...] = DEFAULT_MONTHS,
 ) -> list[Observation]:
-    include_demand = exports_path is not None and ethanol_path is not None
-
     reports = wasde_mod.load_reports(wasde_path, commodity=commodity, attribute=attribute)
-    revs = wasde_mod.revisions(reports)
+    revs = wasde_mod.revisions(reports, target_months=target_months)
     conditions = condition_mod.load_condition(condition_path)
     droughts = weather_mod.load_drought(drought_path)
-    exports = demand_mod.load_exports(exports_path) if include_demand else None
-    ethanol = demand_mod.load_ethanol(ethanol_path) if include_demand else None
+
+    demand_loaded = None
+    if demand:
+        demand_loaded = [(clue, series.load_weekly(path, clue.key_column)) for clue, path in demand]
 
     by_year: dict[str, list] = {}
     for rev in revs:
@@ -66,8 +68,7 @@ def build_dataset(
         prev_change: float | None = None
         for rev in sorted(by_year[market_year], key=lambda r: r.report_date):
             feats, weeks = features_mod.build_all_features(
-                rev.report_date, rev.prev_report_date, conditions, droughts,
-                exports=exports, ethanol=ethanol, include_demand=include_demand,
+                rev.report_date, rev.prev_report_date, conditions, droughts, demand_loaded
             )
             if feats is not None:
                 observations.append(

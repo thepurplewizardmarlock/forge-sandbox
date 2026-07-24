@@ -2,21 +2,22 @@
 import unittest
 from pathlib import Path
 
+from wasde_predictor import commodities
 from wasde_predictor import features as F
 from wasde_predictor.dataset import build_dataset, class_balance
 
 SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
-WASDE = SAMPLE / "wasde_corn_sample.csv"
-COND = SAMPLE / "condition_corn_sample.csv"
-DROUGHT = SAMPLE / "drought_corn_sample.csv"
-EXP = SAMPLE / "exports_corn_sample.csv"
-ETH = SAMPLE / "ethanol_corn_sample.csv"
+
+
+def _demand_paths(c):
+    return [(clue, SAMPLE / f"{clue.basename}.csv") for clue in c.demand_clues]
 
 
 class YieldDatasetTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.obs = build_dataset(WASDE, COND, DROUGHT)  # default target = yield
+        cls.obs = build_dataset(SAMPLE / "wasde_corn.csv", SAMPLE / "condition_corn.csv",
+                                SAMPLE / "drought_corn.csv", commodity="Corn")
 
     def test_dataset_is_non_empty(self):
         self.assertTrue(self.obs)
@@ -42,17 +43,16 @@ class YieldDatasetTests(unittest.TestCase):
         self.assertEqual(bal["up"] + bal["down_or_flat"], bal["n"])
 
 
-class EndingStocksDatasetTests(unittest.TestCase):
+class CornEndingStocksTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.obs = build_dataset(WASDE, COND, DROUGHT, exports_path=EXP, ethanol_path=ETH,
-                                attribute="Ending Stocks")
+        c = commodities.CORN
+        cls.obs = build_dataset(SAMPLE / "wasde_corn.csv", SAMPLE / "condition_corn.csv",
+                                SAMPLE / "drought_corn.csv", demand=_demand_paths(c),
+                                commodity="Corn", attribute="Ending Stocks")
 
-    def test_dataset_is_non_empty(self):
-        self.assertTrue(self.obs)
-
-    def test_includes_demand_features(self):
-        expected = set(F.FEATURE_NAMES) | set(F.DEMAND_FEATURE_NAMES)
+    def test_includes_corn_demand_features(self):
+        expected = set(F.FEATURE_NAMES) | {"export_pace_surprise", "ethanol_pace_surprise"}
         for o in self.obs:
             self.assertEqual(set(o.features), expected)
 
@@ -61,24 +61,27 @@ class EndingStocksDatasetTests(unittest.TestCase):
             for w in o.feature_weeks:
                 self.assertLess(w, o.report_date)
 
-    def test_changes_are_in_million_bushels_scale(self):
-        # ending-stocks changes are much bigger than yield changes (bushels/acre)
+    def test_changes_are_million_bushel_scale(self):
         self.assertTrue(any(abs(o.change) > 10 for o in self.obs))
 
 
-class SoybeansDatasetTests(unittest.TestCase):
-    def test_soybeans_yield_dataset_builds(self):
-        obs = build_dataset(
-            SAMPLE / "wasde_soybeans_sample.csv",
-            SAMPLE / "condition_soybeans_sample.csv",
-            SAMPLE / "drought_soybeans_sample.csv",
-            commodity="Soybeans",
-        )
+class SoybeansEndingStocksTests(unittest.TestCase):
+    def test_soybeans_ending_stocks_uses_crush_and_exports(self):
+        c = commodities.SOYBEANS
+        obs = build_dataset(SAMPLE / "wasde_soybeans.csv", SAMPLE / "condition_soybeans.csv",
+                            SAMPLE / "drought_soybeans.csv", demand=_demand_paths(c),
+                            commodity="Soybeans", attribute="Ending Stocks")
         self.assertTrue(obs)
-        self.assertEqual(set(obs[0].features), set(F.FEATURE_NAMES))
-        for o in obs:  # leak guard holds for the other commodity too
-            for w in o.feature_weeks:
-                self.assertLess(w, o.report_date)
+        expected = set(F.FEATURE_NAMES) | {"export_pace_surprise", "crush_pace_surprise"}
+        self.assertEqual(set(obs[0].features), expected)
+
+
+class WheatDatasetTests(unittest.TestCase):
+    def test_wheat_yield_dataset_builds(self):
+        obs = build_dataset(SAMPLE / "wasde_wheat.csv", SAMPLE / "condition_wheat.csv",
+                            SAMPLE / "drought_wheat.csv", commodity="Wheat",
+                            target_months=commodities.WHEAT.report_months)
+        self.assertTrue(obs)
 
 
 if __name__ == "__main__":

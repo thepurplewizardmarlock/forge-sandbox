@@ -55,8 +55,9 @@ the row-crop window is a simplification; the CLI prints a note when you select i
 - **`--target yield`** (default) — predicts USDA's corn *yield* revision from the
   supply clues (condition, drought). Yield is the biggest driver of the pantry.
 - **`--target ending-stocks`** — predicts the *ending stocks* revision (the number
-  traders actually watch). Ending stocks = supply − demand, so this target adds
-  two **demand clues**: export-pace surprise and ethanol-grind surprise.
+  traders actually watch), for any commodity. Ending stocks = supply − demand, so
+  this target adds **per-commodity demand clues**: corn → exports + ethanol grind;
+  soybeans → exports + crush; wheat → exports.
 
 ## How to read the `run` output
 
@@ -112,13 +113,16 @@ them in:
 5. **(ending-stocks target only) Ethanol** — EIA weekly ethanol production, as a
    grind-vs-normal surprise → `week_ending, region, value`.
 
+Save them into a folder (e.g. `data/raw/`) using the **same base names** as the
+sample files — `wasde_corn.csv`, `condition_corn.csv`, `drought_corn.csv`,
+`exports_corn.csv`, `ethanol_corn.csv`, etc. — then point `--data-dir` at it:
+
 ```bash
-python3 cli.py run --wasde-file data/raw/wasde.csv \
-                   --condition-file data/raw/condition.csv \
-                   --drought-file data/raw/drought.csv
+python3 cli.py run --commodity corn --target ending-stocks --data-dir data/raw
 ```
 
-Anything under `data/raw/` is git-ignored, so real downloads stay local.
+Individual files can still be overridden with `--wasde-file`/`--condition-file`/
+`--drought-file`. Anything under `data/raw/` is git-ignored, so downloads stay local.
 
 ## Glossary
 
@@ -139,11 +143,11 @@ Anything under `data/raw/` is git-ignored, so real downloads stay local.
 wasde-predictor/
   cli.py                     # `run` (scoreboard) and `predict-next`
   wasde_predictor/
+    commodities.py           # config: each commodity's demand clues + report window
     wasde.py                 # load any WASDE attribute (yield / ending stocks) + revisions
     series.py                # generic weekly series + point-in-time (leak-safe) accessors
     condition.py             # crop-condition loader
     weather.py               # drought loader
-    demand.py                # export-pace + ethanol-pace loaders (ending-stocks target)
     features.py              # build the supply (+demand) clue vector (leak-safe)
     dataset.py               # join target + clues into observations (target-selectable)
     models.py                # majority + persistence baselines; threshold + logistic
@@ -168,15 +172,14 @@ wasde-predictor/
    logistic/ridge models (it overfits).
 7. ✅ Full **ending stocks** target (`--target ending-stocks`) with demand clues
    (export-pace + ethanol-pace surprises).
-8. ✅ **Soybeans and wheat** via `--commodity` (wheat approximate; ending-stocks
-   remains corn-only for now, since demand clues are commodity-specific).
+8. ✅ **Soybeans and wheat** via `--commodity` (wheat window still approximate).
+9. ✅ **Per-commodity demand clues** (corn ethanol, soybean crush, wheat exports)
+   — ending stocks now works for every commodity, via a central `commodities.py`.
 
 ### Beyond v1 (natural next steps)
 
-- Commodity-specific demand clues (soybean crush, wheat exports) to unlock the
-  ending-stocks target for soybeans/wheat.
 - A wheat-appropriate seasonal window (winter/spring wheat, Small Grains Summary).
-- Real-data wiring: small scripted fetchers where a source's terms allow it.
+- Real-data converters/fetchers for the standard file names (see below).
 
 > Note: the data in `data/sample/` is **synthetic and for testing only** — it is
 > not real USDA data and must not be read as such.
