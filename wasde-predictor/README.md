@@ -125,6 +125,25 @@ python3 cli.py run --commodity corn --target ending-stocks --data-dir data/raw
 Individual files can still be overridden with `--wasde-file`/`--condition-file`/
 `--drought-file`. Anything under `data/raw/` is git-ignored, so downloads stay local.
 
+### Converters (`tools/convert.py`)
+
+Real NASS / Drought-Monitor / demand exports don't match our simple schema, so
+convert them first (the WASDE consolidated CSV needs no conversion — point
+`--wasde-file` straight at it):
+
+```bash
+# NASS Quick Stats crop condition -> condition_corn.csv (sums % good + % excellent)
+python3 tools/convert.py condition nass_corn_condition.csv data/raw/condition_corn.csv
+
+# U.S. Drought Monitor -> drought_corn.csv (% area in D2+)
+python3 tools/convert.py drought usdm_cornbelt.csv data/raw/drought_corn.csv --region "US CORN BELT"
+
+# a weekly demand level (FAS exports, EIA ethanol, NOPA crush) -> a pace-surprise clue
+python3 tools/convert.py pace fas_corn_exports.csv data/raw/exports_corn.csv \
+    --date-col week_ending --value-col commitments_pct \
+    --key CORN --key-column commodity --metric EXPORT_PACE_SURPRISE
+```
+
 ## Glossary
 
 | Term | Plain meaning |
@@ -154,7 +173,9 @@ wasde-predictor/
     models.py                # majority + persistence baselines; threshold + logistic
     regression.py            # magnitude models (zero/mean/persistence + ridge)
     sklearn_models.py        # OPTIONAL gradient-boosted trees (classifier + regressor)
+    convert.py               # turn real downloads into the project CSV schema
     evaluate.py              # accuracy, precision/recall/F1, confusion, MAE/RMSE, LOYO
+  tools/convert.py           # CLI for the converters above
   tools/make_sample_data.py  # regenerate the synthetic sample (deterministic)
   data/sample/               # synthetic CSVs (committed, clearly fake)
   data/raw/                  # your real USDA downloads (git-ignored)
@@ -177,11 +198,13 @@ wasde-predictor/
 9. ✅ **Per-commodity demand clues** (corn ethanol, soybean crush, wheat exports)
    — ending stocks now works for every commodity, via a central `commodities.py`.
 10. ✅ **Wheat-appropriate May–Sep window** (winter-wheat harvest + Small Grains Summary).
+11. ✅ **Real-data converters** (`tools/convert.py`) for NASS condition, Drought
+    Monitor, and generic weekly→pace-surprise demand series.
 
 ### Beyond v1 (natural next steps)
 
-- Real-data converters for the standard file names (see below).
 - Separate winter vs. spring wheat instead of one blended series.
+- Scripted fetchers (keyed EIA / NASS / CFTC APIs) where a source's terms allow it.
 
 > Note: the data in `data/sample/` is **synthetic and for testing only** — it is
 > not real USDA data and must not be read as such.
