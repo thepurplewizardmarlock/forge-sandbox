@@ -51,6 +51,7 @@ class Revision:
     month: int
     prev_value: float
     value: float
+    prev_report_date: dt.date | None = None
 
     @property
     def change(self) -> float:
@@ -142,6 +143,7 @@ def revisions(
                         month=cur.month,
                         prev_value=prev.value,
                         value=cur.value,
+                        prev_report_date=prev.report_date,
                     )
                 )
     out.sort(key=lambda rev: rev.report_date)

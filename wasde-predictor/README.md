@@ -4,120 +4,141 @@ Predict the **direction of USDA's corn yield revision** — will next month's re
 raise or lower the yield estimate? — using only free, public clues known *before*
 the report comes out.
 
-This is **v1, a "walking skeleton"**: the whole pipeline exists end-to-end
-(load data → build features → baseline → model → honest score), but it is
-deliberately small. It runs on **synthetic sample data** with **zero
-dependencies** so you can see the loop work immediately, then you point it at
-real USDA files.
+**v1**: a complete, honest end-to-end pipeline — two data clues (crop condition +
+drought), a logistic-regression model with feature importance, careful
+leave-one-year-out evaluation against sensible baselines, and a `predict-next`
+command. It runs on **synthetic sample data** with **zero dependencies**, then
+you point it at real USDA files.
 
 ## 60-second background (no ag knowledge needed)
 
 - Think of all US corn as one **pantry**. Farmers fill it at harvest; the country
-  empties it over the year (animal feed, food, ethanol, exports). How full it
-  ends up — **ending stocks** — is the market's most-watched number.
-- Once a month, USDA publishes **WASDE**, its official estimate of that pantry
-  math, at exactly **noon ET**. Every month it **revises** the estimate as new
-  info arrives. Traders bet on the *change*.
-- The biggest driver of the change is **yield** (bushels of corn per acre). We
-  predict the direction USDA moves its yield estimate.
-- **The catch:** USDA's new yield number is released at the *same instant* as the
-  report, so we can't see it early. We forecast from clues that *are* public
-  beforehand — mainly **crop condition** (USDA's weekly "% good/excellent" rating
-  of how the crop looks).
+  empties it over the year (feed, food, ethanol, exports). How full it ends up —
+  **ending stocks** — is the market's most-watched number.
+- Monthly, USDA publishes **WASDE**, its official estimate of that pantry math, at
+  exactly **noon ET**, and **revises** it as new info arrives. Traders bet on the
+  *change*.
+- The biggest driver of the change is **yield** (bushels per acre). We predict the
+  direction USDA moves its yield estimate.
+- **The catch:** USDA's new yield lands at the *same instant* as the report, so we
+  can't see it early. We forecast from clues that *are* public beforehand — mainly
+  **crop condition** (weekly "% good/excellent") and **drought** coverage.
 
-We focus on the **August–November** reports, because that's the only window where
-USDA uses real survey yields (so the clues actually matter); earlier in the year
-it just holds yield at a fixed trend.
+We focus on the **August–November** reports, the only window where USDA uses real
+survey yields (so the clues matter); earlier it just holds yield at a fixed trend.
 
 ## Quick start
 
 ```bash
 cd wasde-predictor
-python3 cli.py                       # runs on bundled SYNTHETIC sample data
-python3 -m unittest discover -s tests -t .   # run the tests
+python3 cli.py run                              # score baselines vs. models
+python3 cli.py predict-next                     # forecast the next upcoming report
+python3 -m unittest discover -s tests -t .      # run the 36 tests
 ```
 
-## How to read the output
+Both commands default to the bundled **synthetic** sample data.
+
+## How to read the `run` output
 
 ```
-  Class balance         : 27 up / 21 down-or-flat  (up-rate 0.562)
   Leave-one-year-out accuracy:
-    coin flip           : 0.500
-    majority baseline   : 0.562   <- the "no skill" bar to beat
-    condition model     : 0.896   <- our one-feature model
+    coin flip             : 0.500
+    majority baseline     : 0.167   <- misleading here (see note); ignore
+    persistence baseline  : 0.604   <- the honest bar to beat
+    condition threshold   : 0.792
+    logistic regression   : 0.833   <- our v1 model
 ```
 
-- **coin flip (0.50)** and **majority baseline** are the bars. The majority
-  baseline just always guesses the most common outcome — any real model must beat
-  it to be worth anything.
-- **Leave-one-year-out** means we test each marketing year using a model trained
-  only on the *other* years — no peeking at the answer.
-- On the **synthetic** data the model looks great (~0.90) *because the fake data
-  has a clean built-in relationship*. **On real USDA data expect it to be much
-  closer to the baseline** — these revisions are genuinely hard to predict (the
-  main driver, yield, is hidden until release). Beating the baseline by even a
-  little, honestly, is the real goal.
+- **Leave-one-year-out**: each marketing year is predicted by a model trained only
+  on the *other* years — no peeking.
+- **Why the majority baseline looks broken (0.167):** a single season's revisions
+  are mostly the same direction (a good crop gets raised in Aug *and* Sep *and*
+  Oct). So when you hold out a year, the training majority flips to the *opposite*
+  of that year — the majority baseline ends up anti-correlated. That's why we use
+  the **persistence baseline** (predict the previous report's direction) as the
+  fair bar: it's the honest thing to beat for an autocorrelated target.
+- **Feature importance** prints the standardized logistic weights: `condition_ge`
+  positive (healthier crop → more likely "up"), `drought_d2plus` negative (more
+  drought → less likely "up") — which is exactly the real-world direction.
+- On this **synthetic** data the model beats persistence handily *because the fake
+  data has a clean built-in signal*. **On real USDA data expect a much smaller
+  edge** — these revisions are genuinely hard (the main driver, yield, is hidden
+  until release). Beating persistence by a little, honestly, is the real goal.
+
+## `predict-next`
+
+Trains on all history, then forecasts a single upcoming report from the
+current-season clues:
+
+```
+  Prediction: USDA will revise corn yield  >>> DOWN <<<
+  P(up) = 0.025   (confidence 97%)
+```
 
 ## Getting real data (replaces the synthetic sample)
 
 USDA blocks automated downloads, so grab these by hand in a browser, then pass
 them in:
 
-1. **Yield history** — USDA's *Consolidated Historical WASDE Report Data* CSV
-   (search "USDA Historical WASDE Report Data"). It stores values *as first
-   published*, which is exactly what we need. Open it once and confirm the column
-   names match `wasde._COLUMNS` (Commodity, Region, Attribute, MarketYear,
-   ReportDate, Value); adjust if USDA's spellings differ.
-2. **Crop condition** — USDA NASS "Quick Stats": corn, "CONDITION", "PCT
-   GOOD" + "PCT EXCELLENT" (sum them), US total, weekly. Save as a CSV with
-   columns `week_ending, state, value`.
+1. **Yield history** — USDA *Consolidated Historical WASDE Report Data* CSV
+   (stores values *as first published* — exactly what we need). Confirm the
+   columns match `wasde._COLUMNS`.
+2. **Crop condition** — NASS "Quick Stats": corn CONDITION, "% GOOD" + "% EXCELLENT"
+   summed, US total, weekly → `week_ending, state, value`.
+3. **Drought** — U.S. Drought Monitor, % of a corn-belt region in D2+ drought,
+   weekly → `week_ending, region, value`.
 
 ```bash
-python3 cli.py --yield-file data/raw/wasde_history.csv \
-               --condition-file data/raw/corn_condition.csv
+python3 cli.py run --yield-file data/raw/wasde.csv \
+                   --condition-file data/raw/condition.csv \
+                   --drought-file data/raw/drought.csv
 ```
 
-Anything under `data/raw/` is git-ignored, so real downloads won't be committed.
+Anything under `data/raw/` is git-ignored, so real downloads stay local.
 
 ## Glossary
 
 | Term | Plain meaning |
 |---|---|
 | **WASDE** | USDA's monthly supply/demand report; the market-moving scorecard |
-| **Ending stocks** | Corn left over at the end of the marketing year (the buffer) |
-| **Yield** | Bushels of corn harvested per acre — the biggest driver of supply |
+| **Yield** | Bushels of corn per acre — the biggest driver of supply |
 | **Marketing year** | Corn's "fiscal year": Sept 1 → Aug 31 |
-| **New crop** | The crop just planted, harvested in the fall |
-| **Crop condition** | USDA's weekly "% good/excellent" rating of how the crop looks |
-| **Revision** | The month-to-month change in a USDA estimate — what we predict |
+| **Crop condition** | USDA's weekly "% good/excellent" field rating |
+| **D2+ drought** | Drought Monitor category "severe" or worse |
+| **Revision** | Month-to-month change in a USDA estimate — what we predict |
+| **Persistence baseline** | Predict that this report moves the same way the last one did |
 | **Leave-one-year-out** | Test each year with a model trained only on the others |
 
 ## Project layout
 
 ```
 wasde-predictor/
-  cli.py                     # run the whole loop and print the scoreboard
+  cli.py                     # `run` (scoreboard) and `predict-next`
   wasde_predictor/
-    wasde.py                 # load yield history; compute Aug-Nov revisions + labels
-    condition.py             # load crop condition; point-in-time (leak-safe) accessor
-    dataset.py               # join target + clue into observations
-    models.py                # majority baseline + one-feature condition model
-    evaluate.py              # accuracy + leave-one-year-out cross-validation
+    wasde.py                 # load yield history; Aug-Nov revisions + labels
+    series.py                # generic weekly series + point-in-time (leak-safe) accessors
+    condition.py             # crop-condition loader
+    weather.py               # drought loader
+    features.py              # build the 5-feature clue vector (leak-safe)
+    dataset.py               # join target + clues into observations
+    models.py                # majority + persistence baselines; threshold + logistic models
+    evaluate.py              # accuracy, precision/recall/F1, confusion, leave-one-year-out
   tools/make_sample_data.py  # regenerate the synthetic sample (deterministic)
   data/sample/               # synthetic CSVs (committed, clearly fake)
   data/raw/                  # your real USDA downloads (git-ignored)
-  tests/                     # unittest suite, incl. the no-leakage guard
+  tests/                     # 36 unittest cases, incl. the no-leakage guards
 ```
 
-## Roadmap (each a small next step)
+## Roadmap
 
-1. ✅ **Walking skeleton** — this: end-to-end loop, one clue, honest baseline.
-2. Real crop-condition features (levels, deviation from normal, top states).
-3. Add weather (Corn Belt drought) as a second clue.
-4. Upgrade the model (logistic regression → gradient-boosted tree) once features earn it.
-5. Predict *magnitude*, not just direction.
-6. Move from yield to full **ending stocks**; add demand-side clues (exports, ethanol).
-7. Extend to soybeans and wheat.
+1. ✅ Walking skeleton — end-to-end loop, one clue, honest baseline.
+2. ✅ Real crop-condition features (level, momentum, season trajectory).
+3. ✅ Second clue: Corn Belt drought.
+4. ✅ Logistic-regression model + feature importance + persistence baseline + `predict-next`.
+5. ▫️ Predict *magnitude* (how many bushels), not just direction.
+6. ▫️ Swap in scikit-learn gradient boosting once features earn it (`requirements.txt`).
+7. ▫️ Move from yield to full **ending stocks**; add demand clues (exports, ethanol).
+8. ▫️ Extend to soybeans and wheat.
 
-> Note: the sample data in `data/sample/` is **synthetic and for testing only** —
-> it is not real USDA data and must not be read as such.
+> Note: the data in `data/sample/` is **synthetic and for testing only** — it is
+> not real USDA data and must not be read as such.
