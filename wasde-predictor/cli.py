@@ -23,6 +23,12 @@ from wasde_predictor.models import (
     MajorityBaseline,
     PersistenceBaseline,
 )
+from wasde_predictor.regression import (
+    MeanBaseline,
+    PersistenceRegressor,
+    RidgeRegression,
+    ZeroBaseline,
+)
 
 HERE = Path(__file__).resolve().parent
 SAMPLE = HERE / "data" / "sample"
@@ -102,6 +108,35 @@ def cmd_run(args: argparse.Namespace) -> None:
     print(BAR)
 
 
+def cmd_regress(args: argparse.Namespace) -> None:
+    is_sample = args.yield_file == S_YIELD
+    obs = build_dataset(args.yield_file, args.condition_file, args.drought_file)
+
+    print(BAR)
+    print("  WASDE corn yield-revision MAGNITUDE (bushels/acre)  --  v1")
+    print(BAR)
+    _sample_note(is_sample)
+
+    results = evaluate.compare_regression(obs, {
+        "zero baseline": ZeroBaseline,
+        "mean baseline": MeanBaseline,
+        "persistence": PersistenceRegressor,
+        "ridge regression": RidgeRegression,
+    })
+    print("  Leave-one-year-out error (lower MAE/RMSE is better):")
+    print(f"    {'model':22s}  {'MAE':>7s}  {'RMSE':>7s}  {'dir.acc':>7s}")
+    for name, r in results.items():
+        print(f"    {name:22s}  {r['mae']:7.3f}  {r['rmse']:7.3f}  {r['direction_accuracy']:7.3f}")
+    print(DASH)
+
+    best_naive = min(results["zero baseline"]["mae"], results["persistence"]["mae"])
+    ridge_mae = results["ridge regression"]["mae"]
+    impr = (best_naive - ridge_mae) / best_naive * 100 if best_naive else 0.0
+    verb = "reduces" if impr > 0 else "increases"
+    print(f"  Ridge {verb} MAE vs. the best naive baseline by {abs(impr):.1f}%.")
+    print(BAR)
+
+
 def cmd_predict_next(args: argparse.Namespace) -> None:
     is_sample = args.yield_file == S_YIELD
     obs = build_dataset(args.yield_file, args.condition_file, args.drought_file)
@@ -146,9 +181,13 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--condition-file", type=Path, default=S_COND)
         p.add_argument("--drought-file", type=Path, default=S_DROUGHT)
 
-    p_run = sub.add_parser("run", help="score baselines vs. models")
+    p_run = sub.add_parser("run", help="score baselines vs. models (direction)")
     add_data_args(p_run)
     p_run.set_defaults(func=cmd_run)
+
+    p_reg = sub.add_parser("regress", help="score magnitude models (bushels/acre)")
+    add_data_args(p_reg)
+    p_reg.set_defaults(func=cmd_regress)
 
     p_next = sub.add_parser("predict-next", help="forecast the next upcoming report")
     add_data_args(p_next)

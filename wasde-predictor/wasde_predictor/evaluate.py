@@ -84,3 +84,51 @@ def leave_one_year_out(observations: list[Observation], model_factory: ModelFact
 
 def compare(observations: list[Observation], models: dict[str, ModelFactory]) -> dict:
     return {name: leave_one_year_out(observations, factory) for name, factory in models.items()}
+
+
+# --- magnitude (regression) metrics -----------------------------------------
+
+def mae(y_true: list[float], y_pred: list[float]) -> float:
+    if not y_true:
+        return 0.0
+    return sum(abs(t - p) for t, p in zip(y_true, y_pred)) / len(y_true)
+
+
+def rmse(y_true: list[float], y_pred: list[float]) -> float:
+    if not y_true:
+        return 0.0
+    return (sum((t - p) ** 2 for t, p in zip(y_true, y_pred)) / len(y_true)) ** 0.5
+
+
+def leave_one_year_out_regression(
+    observations: list[Observation], model_factory: ModelFactory
+) -> dict:
+    """Leave-one-year-out for a magnitude model; reports MAE, RMSE, and the
+    directional accuracy implied by the sign of the prediction."""
+    y_true: list[float] = []
+    y_pred: list[float] = []
+    dir_true: list[int] = []
+    dir_pred: list[int] = []
+    for held_out in _years(observations):
+        train = [o for o in observations if o.market_year != held_out]
+        test = [o for o in observations if o.market_year == held_out]
+        if not train or not test:
+            continue
+        model = model_factory()
+        model.fit(train)
+        for o in test:
+            p = model.predict(o)
+            y_true.append(o.change)
+            y_pred.append(p)
+            dir_true.append(o.label)
+            dir_pred.append(1 if p > 0 else 0)
+    return {
+        "n": len(y_true),
+        "mae": round(mae(y_true, y_pred), 4),
+        "rmse": round(rmse(y_true, y_pred), 4),
+        "direction_accuracy": round(accuracy(dir_true, dir_pred), 3),
+    }
+
+
+def compare_regression(observations: list[Observation], models: dict[str, ModelFactory]) -> dict:
+    return {name: leave_one_year_out_regression(observations, f) for name, f in models.items()}

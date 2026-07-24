@@ -31,9 +31,10 @@ survey yields (so the clues matter); earlier it just holds yield at a fixed tren
 
 ```bash
 cd wasde-predictor
-python3 cli.py run                              # score baselines vs. models
+python3 cli.py run                              # score direction baselines vs. models
+python3 cli.py regress                          # score magnitude models (bushels/acre)
 python3 cli.py predict-next                     # forecast the next upcoming report
-python3 -m unittest discover -s tests -t .      # run the 36 tests
+python3 -m unittest discover -s tests -t .      # run the tests
 ```
 
 Both commands default to the bundled **synthetic** sample data.
@@ -135,7 +136,7 @@ wasde-predictor/
 2. ✅ Real crop-condition features (level, momentum, season trajectory).
 3. ✅ Second clue: Corn Belt drought.
 4. ✅ Logistic-regression model + feature importance + persistence baseline + `predict-next`.
-5. ▫️ Predict *magnitude* (how many bushels), not just direction.
+5. ✅ Predict *magnitude* (bushels/acre) via `regress`, not just direction.
 6. ▫️ Swap in scikit-learn gradient boosting once features earn it (`requirements.txt`).
 7. ▫️ Move from yield to full **ending stocks**; add demand clues (exports, ethanol).
 8. ▫️ Extend to soybeans and wheat.

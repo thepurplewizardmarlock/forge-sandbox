@@ -30,6 +30,7 @@ class Observation:
     features: dict[str, float] = field(default_factory=dict)
     feature_weeks: tuple[dt.date, ...] = ()
     prev_direction: int | None = None  # direction of the previous report this season (for persistence)
+    prev_change: float | None = None   # magnitude of the previous report's change (for persistence regression)
 
 
 def build_dataset(
@@ -49,6 +50,7 @@ def build_dataset(
     observations: list[Observation] = []
     for market_year in sorted(by_year):
         prev_direction: int | None = None  # no prior target report at the season's start
+        prev_change: float | None = None
         for rev in sorted(by_year[market_year], key=lambda r: r.report_date):
             feats, weeks = features_mod.build_features(
                 rev.report_date, rev.prev_report_date, conditions, droughts
@@ -64,10 +66,12 @@ def build_dataset(
                         features=feats,
                         feature_weeks=tuple(weeks),
                         prev_direction=prev_direction,
+                        prev_change=prev_change,
                     )
                 )
             # The previous report actually happened even if we couldn't build features.
             prev_direction = rev.direction
+            prev_change = rev.change
     observations.sort(key=lambda o: o.report_date)
     return observations
 
