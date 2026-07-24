@@ -29,6 +29,7 @@ from wasde_predictor.regression import (
     RidgeRegression,
     ZeroBaseline,
 )
+from wasde_predictor import sklearn_models
 
 HERE = Path(__file__).resolve().parent
 SAMPLE = HERE / "data" / "sample"
@@ -66,16 +67,21 @@ def cmd_run(args: argparse.Namespace) -> None:
           f"  (up-rate {bal['up_rate']})")
     print(DASH)
 
-    results = evaluate.compare(obs, {
+    models = {
         "majority baseline": MajorityBaseline,
         "persistence baseline": PersistenceBaseline,
         "condition threshold": ConditionThresholdModel,
         "logistic regression": LogisticRegression,
-    })
+    }
+    if sklearn_models.HAS_SKLEARN:
+        models["gradient boosting"] = sklearn_models.GBClassifier
+    results = evaluate.compare(obs, models)
     print("  Leave-one-year-out accuracy:")
     print(f"    {'coin flip':22s}: {evaluate.COIN_FLIP_ACCURACY:.3f}")
     for name, res in results.items():
         print(f"    {name:22s}: {res['accuracy']:.3f}  (n={res['n']})")
+    if not sklearn_models.HAS_SKLEARN:
+        print(f"    {'gradient boosting':22s}: (skipped -- pip install scikit-learn)")
     print(DASH)
 
     log = results["logistic regression"]
@@ -117,12 +123,15 @@ def cmd_regress(args: argparse.Namespace) -> None:
     print(BAR)
     _sample_note(is_sample)
 
-    results = evaluate.compare_regression(obs, {
+    reg_models = {
         "zero baseline": ZeroBaseline,
         "mean baseline": MeanBaseline,
         "persistence": PersistenceRegressor,
         "ridge regression": RidgeRegression,
-    })
+    }
+    if sklearn_models.HAS_SKLEARN:
+        reg_models["gradient boosting"] = sklearn_models.GBRegressor
+    results = evaluate.compare_regression(obs, reg_models)
     print("  Leave-one-year-out error (lower MAE/RMSE is better):")
     print(f"    {'model':22s}  {'MAE':>7s}  {'RMSE':>7s}  {'dir.acc':>7s}")
     for name, r in results.items():

@@ -137,7 +137,9 @@ wasde-predictor/
 3. ✅ Second clue: Corn Belt drought.
 4. ✅ Logistic-regression model + feature importance + persistence baseline + `predict-next`.
 5. ✅ Predict *magnitude* (bushels/acre) via `regress`, not just direction.
-6. ▫️ Swap in scikit-learn gradient boosting once features earn it (`requirements.txt`).
+6. ✅ Optional scikit-learn gradient boosting (`pip install scikit-learn`) — and
+   the honest finding that on this small sample it does *not* beat the plain
+   logistic/ridge models (it overfits).
 7. ▫️ Move from yield to full **ending stocks**; add demand clues (exports, ethanol).
 8. ▫️ Extend to soybeans and wheat.
 

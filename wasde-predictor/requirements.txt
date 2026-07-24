@@ -2,10 +2,14 @@
 # Run it with:  python3 cli.py
 # Run tests with:  python3 -m unittest discover -s tests -t .
 #
-# These come into play in later phases (real features, real models) and are
-# listed here so the environment is ready when we get there:
+# OPTIONAL extra: enables the gradient-boosting models in the `run`/`regress`
+# scoreboards. Everything else works without it.
 #
-# pandas>=2.0          # tabular wrangling once the feature set grows
-# scikit-learn>=1.4    # logistic regression, gradient boosting, proper CV
-# requests>=2.31       # optional: scripted downloads where a source allows it
+#   pip install scikit-learn
+#
+# scikit-learn>=1.4
+#
+# Other libs that may help in later phases (not required today):
+# pandas>=2.0          # tabular wrangling if the feature set grows a lot
+# requests>=2.31       # scripted downloads where a source allows it
 # pytest>=8.0          # nicer test runner (the suite also runs under stdlib unittest)
